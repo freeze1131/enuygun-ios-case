@@ -20,17 +20,56 @@ final class FavoritesViewController: UIViewController {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    private let emptyStateLabel: UILabel = {
+    // MARK: - Empty State
+    private let emptyStateView: UIView = {
+        let v = UIView()
+        v.translatesAutoresizingMaskIntoConstraints = false
+        v.isHidden = true
+        return v
+    }()
+
+    private let emptyIconView: UIImageView = {
+        let iv = UIImageView(image: UIImage(systemName: "heart"))
+        iv.tintColor = .secondaryLabel
+        iv.contentMode = .scaleAspectFit
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        return iv
+    }()
+
+    private let emptyTitleLabel: UILabel = {
         let l = UILabel()
-        l.text = "No favorites yet."
+        l.text = "No favorites yet"
+        l.font = .systemFont(ofSize: 18, weight: .bold)
+        l.textColor = .label
+        l.textAlignment = .center
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
+    private let emptySubtitleLabel: UILabel = {
+        let l = UILabel()
+        l.text = "Browse Home and tap the heart to save items here."
+        l.font = .systemFont(ofSize: 14, weight: .semibold)
         l.textColor = .secondaryLabel
-        l.font = .systemFont(ofSize: 16, weight: .semibold)
         l.textAlignment = .center
         l.numberOfLines = 0
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
+    private let goHomeButton: UIButton = {
+        let b = UIButton(type: .system)
+        b.setTitle("Go to Home", for: .normal)
+        b.titleLabel?.font = .systemFont(ofSize: 16, weight: .bold)
+        b.backgroundColor = .label
+        b.setTitleColor(.systemBackground, for: .normal)
+        b.layer.cornerRadius = 14
+        b.contentEdgeInsets = UIEdgeInsets(top: 12, left: 18, bottom: 12, right: 18)
+        b.translatesAutoresizingMaskIntoConstraints = false
+        return b
+    }()
+
+    // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
@@ -39,32 +78,67 @@ final class FavoritesViewController: UIViewController {
         setupCollectionView()
         setupEmptyState()
         bindViewModel()
+
+        goHomeButton.addTarget(self, action: #selector(goHomeTapped), for: .touchUpInside)
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         viewModel.load()
+        applyEmptyState()
     }
 
+    // MARK: - Binding
     private func bindViewModel() {
         viewModel.onUpdate = { [weak self] in
             guard let self else { return }
             self.collectionView.reloadData()
-            self.emptyStateLabel.isHidden = !self.viewModel.isEmpty
+            self.applyEmptyState()
         }
 
         viewModel.load()
+        applyEmptyState()
     }
 
+    private func applyEmptyState() {
+        let isEmpty = viewModel.isEmpty
+        emptyStateView.isHidden = !isEmpty
+        collectionView.isHidden = isEmpty
+    }
+
+    // MARK: - UI Setup
     private func setupEmptyState() {
-        view.addSubview(emptyStateLabel)
-        NSLayoutConstraint.activate([
-            emptyStateLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            emptyStateLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            emptyStateLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            emptyStateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
+        view.addSubview(emptyStateView)
+
+        let stack = UIStackView(arrangedSubviews: [
+            emptyIconView,
+            emptyTitleLabel,
+            emptySubtitleLabel,
+            goHomeButton
         ])
-        emptyStateLabel.isHidden = true
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 10
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        emptyStateView.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            emptyStateView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            emptyStateView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            emptyStateView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            emptyStateView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+
+            emptyIconView.heightAnchor.constraint(equalToConstant: 54),
+            emptyIconView.widthAnchor.constraint(equalToConstant: 54),
+
+            stack.topAnchor.constraint(equalTo: emptyStateView.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: emptyStateView.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: emptyStateView.trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: emptyStateView.bottomAnchor)
+        ])
+
+        emptyStateView.isHidden = true
     }
 
     private func setupCollectionView() {
@@ -96,8 +170,39 @@ final class FavoritesViewController: UIViewController {
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
+
+    // MARK: - Actions
+    @objc private func goHomeTapped() {
+        tabBarController?.selectedIndex = 0
+        if let nav = tabBarController?.viewControllers?.first as? UINavigationController {
+            nav.popToRootViewController(animated: true)
+        }
+    }
+
+    private func confirmRemove(index: Int) {
+        ToastPresenter.show(
+            on: self,
+            title: "Remove Favorite",
+            message: "Remove this item from favorites?",
+            primaryAction: .init(title: "Remove", style: .destructive) { [weak self] in
+                self?.viewModel.remove(at: index)
+            },
+            secondaryAction: .init(title: "Cancel", style: .cancel)
+        )
+    }
+
+    private func animateCellAction(_ cell: UICollectionViewCell) {
+        UIView.animate(withDuration: 0.12, animations: {
+            cell.transform = CGAffineTransform(scaleX: 0.97, y: 0.97)
+        }, completion: { _ in
+            UIView.animate(withDuration: 0.12) {
+                cell.transform = .identity
+            }
+        })
+    }
 }
 
+// MARK: - UICollectionViewDataSource
 extension FavoritesViewController: UICollectionViewDataSource {
 
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
@@ -129,31 +234,11 @@ extension FavoritesViewController: UICollectionViewDataSource {
 
         return cell
     }
-
-    private func confirmRemove(index: Int) {
-        ToastPresenter.show(
-            on: self,
-            title: "Remove Favorite",
-            message: "Remove this item from favorites?",
-            primaryAction: .init(title: "Remove", style: .destructive) { [weak self] in
-                self?.viewModel.remove(at: index)
-            },
-            secondaryAction: .init(title: "Cancel", style: .cancel)
-        )
-    }
-
-    private func animateCellAction(_ cell: UICollectionViewCell) {
-        UIView.animate(withDuration: 0.12, animations: {
-            cell.transform = CGAffineTransform(scaleX: 0.97, y: 0.97)
-        }, completion: { _ in
-            UIView.animate(withDuration: 0.12) {
-                cell.transform = .identity
-            }
-        })
-    }
 }
 
+// MARK: - UICollectionViewDelegate
 extension FavoritesViewController: UICollectionViewDelegate {
+
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let product = viewModel.product(at: indexPath.item)
 

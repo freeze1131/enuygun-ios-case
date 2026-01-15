@@ -91,7 +91,7 @@ final class ProductListViewController: UIViewController {
         view.addSubview(headerContainer)
 
         searchField.translatesAutoresizingMaskIntoConstraints = false
-        searchField.placeholder = "Ara"
+        searchField.placeholder = "Search"
         searchField.backgroundColor = .systemBackground
         searchField.layer.cornerRadius = 12
         searchField.layer.borderWidth = 1
