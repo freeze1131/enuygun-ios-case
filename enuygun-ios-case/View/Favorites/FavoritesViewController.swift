@@ -14,30 +14,50 @@ final class FavoritesViewController: UIViewController {
 
     private var collectionView: UICollectionView!
 
+    private var items: [Product] = []
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
-        title = "Favorites"
+        view.backgroundColor = .systemGroupedBackground
+
+        title = "Favoriler"
+        navigationItem.largeTitleDisplayMode = .never
 
         setupCollectionView()
+        bindStores()
+        reloadData()
+    }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        reloadData()
+    }
+
+    private func bindStores() {
         favoritesStore.onChange = { [weak self] in
-            self?.collectionView.reloadData()
+            self?.reloadData()
         }
+    }
+
+    private func reloadData() {
+        items = favoritesStore.favorites
+        navigationItem.title = "Favoriler (\(items.count))"
+        collectionView.reloadData()
     }
 
     private func setupCollectionView() {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .vertical
         layout.minimumLineSpacing = 12
+        layout.minimumInteritemSpacing = 12
         layout.sectionInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        layout.itemSize = CGSize(width: view.bounds.width - 24, height: 110)
 
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
-        collectionView.backgroundColor = .systemBackground
+        collectionView.backgroundColor = .clear
 
         collectionView.dataSource = self
+        collectionView.delegate = self
         collectionView.register(FavoriteCell.self, forCellWithReuseIdentifier: FavoriteCell.reuseIdentifier)
 
         view.addSubview(collectionView)
@@ -54,7 +74,7 @@ final class FavoritesViewController: UIViewController {
 extension FavoritesViewController: UICollectionViewDataSource {
 
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        favoritesStore.favorites.count
+        items.count
     }
 
     func collectionView(_ collectionView: UICollectionView,
@@ -67,18 +87,46 @@ extension FavoritesViewController: UICollectionViewDataSource {
             return UICollectionViewCell()
         }
 
-        let product = favoritesStore.favorites[indexPath.item]
+        let product = items[indexPath.item]
         cell.configure(with: product)
 
         cell.onAddToCart = { [weak self] in
-            self?.cartStore.add(product)
+            guard let self else { return }
+            self.cartStore.add(product)
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
         }
-        
+
         cell.onRemove = { [weak self] in
-            self?.favoritesStore.toggle(product)
+            guard let self else { return }
+            self.favoritesStore.toggle(product)
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
         }
 
         return cell
     }
 }
 
+extension FavoritesViewController: UICollectionViewDelegate {
+
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let product = items[indexPath.item]
+        let detailVC = ProductDetailViewController(product: product)
+        navigationController?.pushViewController(detailVC, animated: true)
+    }
+}
+
+extension FavoritesViewController: UICollectionViewDelegateFlowLayout {
+
+    func collectionView(_ collectionView: UICollectionView,
+                        layout collectionViewLayout: UICollectionViewLayout,
+                        sizeForItemAt indexPath: IndexPath) -> CGSize {
+
+        let inset: CGFloat = 12
+        let spacing: CGFloat = 12
+        let totalHorizontal = inset * 2 + spacing
+        let width = (collectionView.bounds.width - totalHorizontal) / 2
+
+        let height = width * 1.55
+        return CGSize(width: floor(width), height: floor(height))
+    }
+}

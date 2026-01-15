@@ -19,7 +19,7 @@ final class ProductListViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .systemGroupedBackground
 
         
         setPillSelected(filterButton, selected: false)
@@ -77,12 +77,15 @@ final class ProductListViewController: UIViewController {
     // MARK: - Header (search + filter + sort)
     private func setupHeader() {
         headerContainer.translatesAutoresizingMaskIntoConstraints = false
+        headerContainer.backgroundColor = .clear
         view.addSubview(headerContainer)
 
         searchField.translatesAutoresizingMaskIntoConstraints = false
         searchField.placeholder = "Ara"
-        searchField.backgroundColor = .secondarySystemBackground
+        searchField.backgroundColor = .systemBackground
         searchField.layer.cornerRadius = 12
+        searchField.layer.borderWidth = 1
+        searchField.layer.borderColor = UIColor.separator.cgColor
         searchField.leftView = UIImageView(image: UIImage(systemName: "magnifyingglass"))
         searchField.leftViewMode = .always
         searchField.clearButtonMode = .whileEditing
@@ -165,7 +168,7 @@ final class ProductListViewController: UIViewController {
 
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
-        collectionView.backgroundColor = .systemBackground
+        collectionView.backgroundColor = .systemGroupedBackground
 
         collectionView.delegate = self
         collectionView.dataSource = self

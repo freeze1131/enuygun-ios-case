@@ -16,8 +16,48 @@ final class ProductDetailViewController: UIViewController {
 
     private let scrollView = UIScrollView()
     private let contentView = UIView()
-
+    
     private var galleryCollectionView: UICollectionView!
+    
+    private let cartStore = CartStore.shared
+
+    private let bottomBar: UIView = {
+        let v = UIView()
+        v.backgroundColor = .secondarySystemGroupedBackground
+        v.layer.borderWidth = 1
+        v.layer.borderColor = UIColor.separator.cgColor
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+
+    private let addToCartButton: UIButton = {
+        let b = UIButton(type: .system)
+        b.setTitle("Add to Cart", for: .normal)
+        b.titleLabel?.font = .systemFont(ofSize: 16, weight: .bold)
+        b.backgroundColor = .label
+        b.setTitleColor(.systemBackground, for: .normal)
+        b.layer.cornerRadius = 14
+        b.translatesAutoresizingMaskIntoConstraints = false
+        return b
+    }()
+    
+    private let ratingLabel: UILabel = {
+        let l = UILabel()
+        l.font = .systemFont(ofSize: 14, weight: .semibold)
+        l.textColor = .secondaryLabel
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
+    private let tagStack: UIStackView = {
+        let s = UIStackView()
+        s.axis = .horizontal
+        s.spacing = 8
+        s.alignment = .center
+        s.translatesAutoresizingMaskIntoConstraints = false
+        return s
+    }()
+    
     private let pageControl: UIPageControl = {
         let pc = UIPageControl()
         pc.currentPage = 0
@@ -53,15 +93,6 @@ final class ProductDetailViewController: UIViewController {
         let label = UILabel()
         label.font = .systemFont(ofSize: 14, weight: .bold)
         label.textColor = .systemRed
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
-
-    private let metaLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 14)
-        label.textColor = .secondaryLabel
-        label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -104,14 +135,33 @@ final class ProductDetailViewController: UIViewController {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         contentView.translatesAutoresizingMaskIntoConstraints = false
 
+        // 1) Bottom bar önce
+        view.addSubview(bottomBar)
+        bottomBar.addSubview(addToCartButton)
+
+        // 2) ScrollView sonra
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
 
+        // 3) Bottom bar constraints
+        NSLayoutConstraint.activate([
+            bottomBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bottomBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bottomBar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            addToCartButton.topAnchor.constraint(equalTo: bottomBar.topAnchor, constant: 12),
+            addToCartButton.leadingAnchor.constraint(equalTo: bottomBar.leadingAnchor, constant: 16),
+            addToCartButton.trailingAnchor.constraint(equalTo: bottomBar.trailingAnchor, constant: -16),
+            addToCartButton.bottomAnchor.constraint(equalTo: bottomBar.safeAreaLayoutGuide.bottomAnchor, constant: -12),
+            addToCartButton.heightAnchor.constraint(equalToConstant: 50)
+        ])
+
+        // 4) Scroll constraints (artık bottomBar aynı hierarchy’de)
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
 
             contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
             contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
@@ -121,19 +171,17 @@ final class ProductDetailViewController: UIViewController {
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
         ])
 
-        // Gallery collection view placeholder - setupGallery() içinde eklenecek
-        // PageControl
+        // Subviews
         contentView.addSubview(pageControl)
-
         contentView.addSubview(titleLabel)
         contentView.addSubview(priceLabel)
         contentView.addSubview(oldPriceLabel)
         contentView.addSubview(discountLabel)
-        contentView.addSubview(metaLabel)
+        contentView.addSubview(ratingLabel)
+        contentView.addSubview(tagStack)
         contentView.addSubview(descriptionLabel)
 
         NSLayoutConstraint.activate([
-
             titleLabel.topAnchor.constraint(equalTo: pageControl.bottomAnchor, constant: 12),
             titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
@@ -147,16 +195,23 @@ final class ProductDetailViewController: UIViewController {
             discountLabel.topAnchor.constraint(equalTo: priceLabel.bottomAnchor, constant: 6),
             discountLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
 
-            metaLabel.topAnchor.constraint(equalTo: discountLabel.bottomAnchor, constant: 12),
-            metaLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            metaLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+            ratingLabel.topAnchor.constraint(equalTo: discountLabel.bottomAnchor, constant: 12),
+            ratingLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            ratingLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
 
-            descriptionLabel.topAnchor.constraint(equalTo: metaLabel.bottomAnchor, constant: 12),
+            tagStack.topAnchor.constraint(equalTo: ratingLabel.bottomAnchor, constant: 10),
+            tagStack.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            tagStack.trailingAnchor.constraint(lessThanOrEqualTo: titleLabel.trailingAnchor),
+
+            descriptionLabel.topAnchor.constraint(equalTo: tagStack.bottomAnchor, constant: 14),
             descriptionLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
             descriptionLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
             descriptionLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -24)
         ])
+
+        addToCartButton.addTarget(self, action: #selector(addToCartTapped), for: .touchUpInside)
     }
+
 
     private func setupGallery() {
         let layout = UICollectionViewFlowLayout()
@@ -164,30 +219,28 @@ final class ProductDetailViewController: UIViewController {
         layout.minimumLineSpacing = 0
         layout.minimumInteritemSpacing = 0
 
-        galleryCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
-        galleryCollectionView.translatesAutoresizingMaskIntoConstraints = false
-        galleryCollectionView.backgroundColor = .clear
-        galleryCollectionView.isPagingEnabled = true
-        galleryCollectionView.showsHorizontalScrollIndicator = false
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.translatesAutoresizingMaskIntoConstraints = false
+        cv.backgroundColor = .clear
+        cv.isPagingEnabled = true
+        cv.showsHorizontalScrollIndicator = false
+        cv.dataSource = self
+        cv.delegate = self
+        cv.register(GalleryImageCell.self, forCellWithReuseIdentifier: GalleryImageCell.reuseIdentifier)
 
-        galleryCollectionView.dataSource = self
-        galleryCollectionView.delegate = self
-        galleryCollectionView.register(
-            GalleryImageCell.self,
-            forCellWithReuseIdentifier: GalleryImageCell.reuseIdentifier
-        )
+        self.galleryCollectionView = cv
 
-        contentView.addSubview(galleryCollectionView)
+        contentView.addSubview(cv)
 
         NSLayoutConstraint.activate([
-            galleryCollectionView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
-            galleryCollectionView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            galleryCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            galleryCollectionView.heightAnchor.constraint(equalToConstant: 260),
-            pageControl.heightAnchor.constraint(equalToConstant: 20),
-            pageControl.topAnchor.constraint(equalTo: galleryCollectionView.bottomAnchor, constant: 8),
-            pageControl.centerXAnchor.constraint(equalTo: contentView.centerXAnchor)
+            cv.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
+            cv.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            cv.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            cv.heightAnchor.constraint(equalToConstant: 260),
 
+            pageControl.topAnchor.constraint(equalTo: cv.bottomAnchor, constant: 8),
+            pageControl.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            pageControl.heightAnchor.constraint(equalToConstant: 20)
         ])
 
         contentView.bringSubviewToFront(pageControl)
@@ -196,6 +249,8 @@ final class ProductDetailViewController: UIViewController {
         pageControl.currentPageIndicatorTintColor = .label
         pageControl.numberOfPages = galleryURLs.count
         pageControl.currentPage = 0
+        pageControl.addTarget(self, action: #selector(pageControlChanged), for: .valueChanged)
+        
     }
     
     private func configureFavoriteButton() {
@@ -221,6 +276,18 @@ final class ProductDetailViewController: UIViewController {
             }
         }
     }
+    
+    private func makeTag(_ text: String) -> UILabel {
+        let l = UILabel()
+        l.text = "  \(text)  "
+        l.font = .systemFont(ofSize: 13, weight: .semibold)
+        l.textColor = .label
+        l.backgroundColor = .secondarySystemGroupedBackground
+        l.layer.cornerRadius = 12
+        l.layer.masksToBounds = true
+        return l
+    }
+
 
     private func bind() {
         navigationItem.title = product.title
@@ -229,8 +296,19 @@ final class ProductDetailViewController: UIViewController {
 
         let categoryText = product.category.capitalized
         let brandText = (product.brand ?? "").isEmpty ? "-" : (product.brand ?? "-")
-        metaLabel.text = "Category: \(categoryText)\nBrand: \(brandText)\nRating: \(String(format: "%.2f", product.rating))"
 
+        navigationItem.title = product.title
+
+        ratingLabel.text = "★ \(String(format: "%.2f", product.rating))"
+
+        tagStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        tagStack.addArrangedSubview(makeTag(product.category.capitalized))
+        if let brand = product.brand, !brand.isEmpty {
+            tagStack.addArrangedSubview(makeTag(brand))
+        }
+
+        
+        
         let price = product.price
 
         if let discount = product.discountPercentage {
@@ -253,7 +331,23 @@ final class ProductDetailViewController: UIViewController {
         galleryCollectionView.reloadData()
     }
     
+    @objc private func addToCartTapped() {
+        cartStore.add(product)
+        // küçük feedback
+        let alert = UIAlertController(title: "Added to Cart", message: nil, preferredStyle: .alert)
+        present(alert, animated: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            alert.dismiss(animated: true)
+        }
+    }
     
+    @objc private func pageControlChanged(_ sender: UIPageControl) {
+        let index = sender.currentPage
+        let indexPath = IndexPath(item: index, section: 0)
+        galleryCollectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
+    }
+
+
 
     @objc private func favoriteTapped() {
         favoritesStore.toggle(product)
@@ -292,3 +386,15 @@ extension ProductDetailViewController: UICollectionViewDelegate {
         pageControl.currentPage = max(0, min(page, galleryURLs.count - 1))
     }
 }
+
+extension ProductDetailViewController: UIGestureRecognizerDelegate {
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+       
+        return true
+    }
+}
+
