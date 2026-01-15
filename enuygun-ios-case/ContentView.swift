@@ -8,16 +8,17 @@
 import SwiftUI
 
 struct ContentView: View {
+
+    @StateObject private var viewModel = ProductListViewModel()
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        Text("Check console")
+            .task {
+                await viewModel.fetchProducts()
+            }
     }
 }
+
 
 #Preview {
     ContentView()

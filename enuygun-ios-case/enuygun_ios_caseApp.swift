@@ -11,7 +11,7 @@ import SwiftUI
 struct enuygun_ios_caseApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ProductListViewControllerWrapper()
         }
     }
 }
