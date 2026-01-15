@@ -6,20 +6,64 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		94AA07992F198D7900AC9A59 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9406A16F2F191EF6007CD771 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9406A1762F191EF6007CD771;
+			remoteInfo = "enuygun-ios-case";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		9406A1772F191EF6007CD771 /* enuygun-ios-case.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "enuygun-ios-case.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		94AA07952F198D7900AC9A59 /* enuygun-ios-caseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "enuygun-ios-caseTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		94AA079E2F198D7E00AC9A59 /* Exceptions for "enuygun-ios-case" folder in "enuygun-ios-case" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Tests/ProductListViewModelTests.swift,
+			);
+			target = 9406A1762F191EF6007CD771 /* enuygun-ios-case */;
+		};
+		94AA07A02F198D8100AC9A59 /* Exceptions for "enuygun-ios-case" folder in "enuygun-ios-caseTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Tests/ProductListViewModelTests.swift,
+			);
+			target = 94AA07942F198D7900AC9A59 /* enuygun-ios-caseTests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9406A1792F191EF6007CD771 /* enuygun-ios-case */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				94AA079E2F198D7E00AC9A59 /* Exceptions for "enuygun-ios-case" folder in "enuygun-ios-case" target */,
+				94AA07A02F198D8100AC9A59 /* Exceptions for "enuygun-ios-case" folder in "enuygun-ios-caseTests" target */,
+			);
 			path = "enuygun-ios-case";
+			sourceTree = "<group>";
+		};
+		94AA07962F198D7900AC9A59 /* enuygun-ios-caseTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "enuygun-ios-caseTests";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		9406A1742F191EF6007CD771 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		94AA07922F198D7900AC9A59 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +77,7 @@
 			isa = PBXGroup;
 			children = (
 				9406A1792F191EF6007CD771 /* enuygun-ios-case */,
+				94AA07962F198D7900AC9A59 /* enuygun-ios-caseTests */,
 				9406A1782F191EF6007CD771 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +86,7 @@
 			isa = PBXGroup;
 			children = (
 				9406A1772F191EF6007CD771 /* enuygun-ios-case.app */,
+				94AA07952F198D7900AC9A59 /* enuygun-ios-caseTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,6 +116,29 @@
 			productReference = 9406A1772F191EF6007CD771 /* enuygun-ios-case.app */;
 			productType = "com.apple.product-type.application";
 		};
+		94AA07942F198D7900AC9A59 /* enuygun-ios-caseTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 94AA079B2F198D7900AC9A59 /* Build configuration list for PBXNativeTarget "enuygun-ios-caseTests" */;
+			buildPhases = (
+				94AA07912F198D7900AC9A59 /* Sources */,
+				94AA07922F198D7900AC9A59 /* Frameworks */,
+				94AA07932F198D7900AC9A59 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				94AA079A2F198D7900AC9A59 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				94AA07962F198D7900AC9A59 /* enuygun-ios-caseTests */,
+			);
+			name = "enuygun-ios-caseTests";
+			packageProductDependencies = (
+			);
+			productName = "enuygun-ios-caseTests";
+			productReference = 94AA07952F198D7900AC9A59 /* enuygun-ios-caseTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -82,6 +151,10 @@
 				TargetAttributes = {
 					9406A1762F191EF6007CD771 = {
 						CreatedOnToolsVersion = 26.1.1;
+					};
+					94AA07942F198D7900AC9A59 = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = 9406A1762F191EF6007CD771;
 					};
 				};
 			};
@@ -100,12 +173,20 @@
 			projectRoot = "";
 			targets = (
 				9406A1762F191EF6007CD771 /* enuygun-ios-case */,
+				94AA07942F198D7900AC9A59 /* enuygun-ios-caseTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		9406A1752F191EF6007CD771 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		94AA07932F198D7900AC9A59 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +203,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		94AA07912F198D7900AC9A59 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		94AA079A2F198D7900AC9A59 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9406A1762F191EF6007CD771 /* enuygun-ios-case */;
+			targetProxy = 94AA07992F198D7900AC9A59 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		9406A1802F191EF6007CD771 /* Debug */ = {
@@ -306,6 +402,46 @@
 			};
 			name = Release;
 		};
+		94AA079C2F198D7900AC9A59 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.aco.enuygun-ios-caseTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/enuygun-ios-case.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/enuygun-ios-case";
+			};
+			name = Debug;
+		};
+		94AA079D2F198D7900AC9A59 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.aco.enuygun-ios-caseTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/enuygun-ios-case.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/enuygun-ios-case";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -323,6 +459,15 @@
 			buildConfigurations = (
 				9406A1832F191EF6007CD771 /* Debug */,
 				9406A1842F191EF6007CD771 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		94AA079B2F198D7900AC9A59 /* Build configuration list for PBXNativeTarget "enuygun-ios-caseTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				94AA079C2F198D7900AC9A59 /* Debug */,
+				94AA079D2F198D7900AC9A59 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
