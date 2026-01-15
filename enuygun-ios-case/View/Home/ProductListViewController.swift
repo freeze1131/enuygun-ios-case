@@ -10,8 +10,8 @@ final class ProductListViewController: UIViewController {
 
     private let viewModel = ProductListViewModel()
 
+    private let refreshControl = UIRefreshControl()
     private var collectionView: UICollectionView!
-
     private let headerContainer = UIView()
     private let searchField = UITextField()
     private let filterButton = UIButton(type: .system)
@@ -146,6 +146,9 @@ final class ProductListViewController: UIViewController {
         collectionView.delegate = self
         collectionView.dataSource = self
         collectionView.register(ProductCell.self, forCellWithReuseIdentifier: ProductCell.reuseIdentifier)
+        refreshControl.addTarget(self, action: #selector(didPullToRefresh), for: .valueChanged)
+        collectionView.refreshControl = refreshControl
+
 
         view.addSubview(collectionView)
 
@@ -158,7 +161,13 @@ final class ProductListViewController: UIViewController {
     }
     
     
-    
+    @objc private func didPullToRefresh() {
+        Task {
+            await viewModel.loadProducts()
+            refreshControl.endRefreshing()
+        }
+    }
+
     
     @objc private func searchChanged() {
         viewModel.setSearchQuery(searchField.text ?? "")
