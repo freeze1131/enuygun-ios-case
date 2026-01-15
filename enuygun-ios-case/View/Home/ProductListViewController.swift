@@ -21,25 +21,43 @@ final class ProductListViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
 
-        setupNavigationTitle(title: "Ürünler", count: 0)
+        setupNavigationTitle(title: "Ürünler", count: 0, total: 0)
         setupHeader()
         setupCollectionView()
+        
+        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
 
-        Task {
-            await viewModel.loadProducts()
-            setupNavigationTitle(title: "Ürünler", count: viewModel.products.count)
-            collectionView.reloadData()
+
+        // ViewModel -> UI
+        viewModel.onUpdate = { [weak self] in
+            guard let self else { return }
+            self.setupNavigationTitle(
+                title: "Ürünler",
+                count: self.viewModel.products.count,
+                total: self.viewModel.totalFromAPI
+            )
+            self.collectionView.reloadData()
         }
+
+        // UI -> ViewModel
+        searchField.addTarget(self, action: #selector(searchChanged), for: .editingChanged)
+        filterButton.addTarget(self, action: #selector(filterTapped), for: .touchUpInside)
+        sortButton.addTarget(self, action: #selector(sortTapped), for: .touchUpInside)
+
+        Task { await viewModel.loadProducts() }
     }
 
+
     // MARK: - Nav title (Ürünler + sayı)
-    private func setupNavigationTitle(title: String, count: Int) {
+    private func setupNavigationTitle(title: String, count: Int, total: Int) {
         let titleLabel = UILabel()
         titleLabel.text = title
         titleLabel.font = .systemFont(ofSize: 20, weight: .bold)
 
         let countLabel = UILabel()
-        countLabel.text = "\(count)"
+        countLabel.text = total > 0 ? "\(count)/\(total)" : "\(count)"
         countLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         countLabel.textColor = .secondaryLabel
 
@@ -50,6 +68,7 @@ final class ProductListViewController: UIViewController {
 
         navigationItem.titleView = stack
     }
+
 
     // MARK: - Header (search + filter + sort)
     private func setupHeader() {
@@ -66,6 +85,7 @@ final class ProductListViewController: UIViewController {
         searchField.returnKeyType = .search
         searchField.autocapitalizationType = .none
         searchField.autocorrectionType = .no
+        searchField.delegate = self
 
         // sol icon padding düzeltmesi
         if let iv = searchField.leftView as? UIImageView {
@@ -124,6 +144,7 @@ final class ProductListViewController: UIViewController {
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.backgroundColor = .systemBackground
 
+        collectionView.delegate = self
         collectionView.dataSource = self
         collectionView.register(ProductCell.self, forCellWithReuseIdentifier: ProductCell.reuseIdentifier)
 
@@ -159,4 +180,63 @@ extension ProductListViewController: UICollectionViewDataSource {
         cell.configure(with: product)
         return cell
     }
+    
+    
+    
+    
+    @objc private func searchChanged() {
+        viewModel.setSearchQuery(searchField.text ?? "")
+    }
+
+    @objc private func filterTapped() {
+        let sheet = UIAlertController(title: "Filter", message: nil, preferredStyle: .actionSheet)
+
+        sheet.addAction(UIAlertAction(title: "All", style: .default) { [weak self] _ in
+            self?.viewModel.setCategory(nil)
+        })
+
+        for category in viewModel.availableCategories() {
+            sheet.addAction(UIAlertAction(title: category.capitalized, style: .default) { [weak self] _ in
+                self?.viewModel.setCategory(category)
+            })
+        }
+
+        sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(sheet, animated: true)
+    }
+
+    @objc private func sortTapped() {
+        let sheet = UIAlertController(title: "Sort", message: nil, preferredStyle: .actionSheet)
+        
+        for option in ProductListViewModel.SortOption.allCases {
+            sheet.addAction(UIAlertAction(title: option.title, style: .default) { [weak self] _ in
+                self?.viewModel.setSortOption(option)
+            })
+        }
+        
+        sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(sheet, animated: true)
+    }
+    
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
+
 }
+
+
+extension ProductListViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
+    }
+}
+
+extension ProductListViewController: UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let product = viewModel.products[indexPath.item]
+        let detailVC = ProductDetailViewController(product: product)
+        navigationController?.pushViewController(detailVC, animated: true)
+    }
+}
+
