@@ -11,7 +11,15 @@ import SwiftUI
 struct enuygun_ios_caseApp: App {
     var body: some Scene {
         WindowGroup {
-            ProductListViewControllerWrapper()
+            MainTabBarWrapper()
         }
     }
+}
+
+struct MainTabBarWrapper: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        MainTabBarController()
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
 }

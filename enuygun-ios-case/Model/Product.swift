@@ -13,7 +13,7 @@ struct Product: Codable, Identifiable {
     let description: String
     let category: String
     let price: Double
-    let discountPercentage: Double
+    let discountPercentage: Double?
     let rating: Double
     let stock: Int
     let brand: String?
