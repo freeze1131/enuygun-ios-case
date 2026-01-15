@@ -10,14 +10,6 @@ final class CheckoutViewController: UIViewController {
 
     private let viewModel: CheckoutViewModel
 
-       init(viewModel: CheckoutViewModel) {
-           self.viewModel = viewModel
-           super.init(nibName: nil, bundle: nil)
-       }
-
-       required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-
     // amount snapshot (success screen için)
     private var amountAtPayTime: String = "$0.00"
 
@@ -97,12 +89,67 @@ final class CheckoutViewController: UIViewController {
         return b
     }()
 
-    private let spinner: UIActivityIndicatorView = {
-        let s = UIActivityIndicatorView(style: .medium)
+    // MARK: - Loading Overlay (NEW)
+
+    private let loadingOverlay: UIView = {
+        let v = UIView()
+        v.backgroundColor = UIColor.black.withAlphaComponent(0.22)
+        v.alpha = 0
+        v.isHidden = true
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+
+    private let loadingCard: UIView = {
+        let v = UIView()
+        v.backgroundColor = .systemBackground
+        v.layer.cornerRadius = 16
+        v.layer.borderWidth = 1
+        v.layer.borderColor = UIColor.separator.cgColor
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+
+    private let loadingSpinner: UIActivityIndicatorView = {
+        let s = UIActivityIndicatorView(style: .large)
         s.hidesWhenStopped = true
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
     }()
+
+    private let loadingTitleLabel: UILabel = {
+        let l = UILabel()
+        l.text = "Processing payment…"
+        l.font = .systemFont(ofSize: 16, weight: .bold)
+        l.textAlignment = .center
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
+    private let loadingSubtitleLabel: UILabel = {
+        let l = UILabel()
+        l.text = "Please don’t close the app."
+        l.font = .systemFont(ofSize: 13, weight: .semibold)
+        l.textColor = .secondaryLabel
+        l.textAlignment = .center
+        l.numberOfLines = 0
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
+    // MARK: - Init
+
+    init(viewModel: CheckoutViewModel) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    // Convenience (istersen eski çağrıları bozmamak için)
+    convenience init() {
+        self.init(viewModel: CheckoutViewModel())
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     // MARK: - Lifecycle
 
@@ -112,6 +159,7 @@ final class CheckoutViewController: UIViewController {
         title = "Checkout"
 
         setupUI()
+        setupLoadingOverlay()
         setupInputFormatting()
         bind()
 
@@ -125,6 +173,8 @@ final class CheckoutViewController: UIViewController {
         // placeholder initial
         addressPlaceholder.isHidden = !addressView.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+
+    // MARK: - Bind
 
     private func bind() {
         viewModel.onUpdate = { [weak self] in
@@ -150,15 +200,32 @@ final class CheckoutViewController: UIViewController {
         totalValueLabel.text = viewModel.totalText
         deliveryHintLabel.text = "ETA: \(viewModel.deliveryEtaText)"
 
-        switch viewModel.state {
-        case .idle:
-            spinner.stopAnimating()
-            payButton.isEnabled = true
-            payButton.alpha = 1.0
-        case .loading:
-            spinner.startAnimating()
-            payButton.isEnabled = false
-            payButton.alpha = 0.7
+        let isLoading = (viewModel.state == .loading)
+
+        // disable inputs while loading
+        payButton.isEnabled = !isLoading
+        payButton.alpha = isLoading ? 0.7 : 1.0
+        deliverySegment.isEnabled = !isLoading
+        [nameField, cardNumberField, expiryField, cvvField].forEach { $0.isEnabled = !isLoading }
+        addressView.isEditable = !isLoading
+
+        setLoadingOverlayVisible(isLoading)
+    }
+
+    private func setLoadingOverlayVisible(_ visible: Bool) {
+        if visible {
+            loadingOverlay.isHidden = false
+            loadingSpinner.startAnimating()
+            UIView.animate(withDuration: 0.18) {
+                self.loadingOverlay.alpha = 1
+            }
+        } else {
+            UIView.animate(withDuration: 0.18, animations: {
+                self.loadingOverlay.alpha = 0
+            }, completion: { _ in
+                self.loadingSpinner.stopAnimating()
+                self.loadingOverlay.isHidden = true
+            })
         }
     }
 
@@ -196,12 +263,28 @@ final class CheckoutViewController: UIViewController {
             amount: amountText,
             onDone: { [weak self] in
                 guard let self else { return }
-                self.tabBarController?.selectedIndex = 0
-                self.navigationController?.popToRootViewController(animated: false)
+                guard let tab = self.tabBarController else { return }
+
+                tab.viewControllers?.forEach { vc in
+                    if let nav = vc as? UINavigationController {
+                        nav.popToRootViewController(animated: false)
+                    }
+                }
+
+                UIView.transition(
+                    with: tab.view,
+                    duration: 0.50,
+                    options: .transitionCrossDissolve
+                ) {
+                    tab.selectedIndex = 0
+                }
             }
         )
         navigationController?.pushViewController(vc, animated: true)
     }
+
+
+
 
     private func showError(_ message: String) {
         ToastPresenter.show(
@@ -215,22 +298,18 @@ final class CheckoutViewController: UIViewController {
     // MARK: - Input Formatting Setup
 
     private func setupInputFormatting() {
-        // delegates
         cardNumberField.delegate = self
         expiryField.delegate = self
         cvvField.delegate = self
 
-        // keyboards
         cardNumberField.keyboardType = .numberPad
         expiryField.keyboardType = .numberPad
         cvvField.keyboardType = .numberPad
 
-        // helpful
         cardNumberField.textContentType = .creditCardNumber
         expiryField.textContentType = nil
         cvvField.textContentType = nil
 
-        // editing changed (paste durumları için de düzeltme)
         cardNumberField.addTarget(self, action: #selector(cardNumberEditingChanged), for: .editingChanged)
         expiryField.addTarget(self, action: #selector(expiryEditingChanged), for: .editingChanged)
         cvvField.addTarget(self, action: #selector(cvvEditingChanged), for: .editingChanged)
@@ -254,10 +333,9 @@ final class CheckoutViewController: UIViewController {
     // MARK: - UI Setup
 
     private func setupUI() {
-        // Bottom bar (tek sefer!)
+        // Bottom bar
         view.addSubview(bottomBar)
         bottomBar.addSubview(payButton)
-        bottomBar.addSubview(spinner)
 
         // Scroll container
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -267,7 +345,6 @@ final class CheckoutViewController: UIViewController {
         scrollView.addSubview(contentView)
 
         NSLayoutConstraint.activate([
-            // bottom bar
             bottomBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
@@ -278,16 +355,11 @@ final class CheckoutViewController: UIViewController {
             payButton.trailingAnchor.constraint(equalTo: bottomBar.trailingAnchor, constant: -16),
             payButton.heightAnchor.constraint(equalToConstant: 52),
 
-            spinner.centerXAnchor.constraint(equalTo: bottomBar.centerXAnchor),
-            spinner.centerYAnchor.constraint(equalTo: bottomBar.centerYAnchor),
-
-            // scroll view
             scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
 
-            // content view (scrollview içinde düzgün: contentLayoutGuide / frameLayoutGuide)
             contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
             contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
@@ -304,7 +376,7 @@ final class CheckoutViewController: UIViewController {
             card.layer.borderColor = UIColor.separator.cgColor
         }
 
-        // Summary card
+        // Summary
         let summaryTitle = makeSectionTitle("Order Summary")
         let rowsStack = UIStackView(arrangedSubviews: [
             makeRow(title: "Subtotal", valueLabel: subtotalValueLabel),
@@ -318,19 +390,18 @@ final class CheckoutViewController: UIViewController {
         summaryCard.addSubview(summaryTitle)
         summaryCard.addSubview(rowsStack)
 
-        // Delivery card
+        // Delivery
         let deliveryTitle = makeSectionTitle("Delivery")
         deliveryCard.addSubview(deliveryTitle)
         deliveryCard.addSubview(deliverySegment)
         deliveryCard.addSubview(deliveryHintLabel)
 
-        // Payment card
+        // Payment
         let paymentTitle = makeSectionTitle("Payment")
         configureField(nameField, placeholder: "Full Name")
         configureField(cardNumberField, placeholder: "Card Number")
         configureField(expiryField, placeholder: "MM/YY")
         configureField(cvvField, placeholder: "CVV")
-
         cvvField.isSecureTextEntry = true
 
         let row2 = UIStackView(arrangedSubviews: [expiryField, cvvField])
@@ -344,7 +415,7 @@ final class CheckoutViewController: UIViewController {
         paymentCard.addSubview(cardNumberField)
         paymentCard.addSubview(row2)
 
-        // Address card
+        // Address
         let addressTitle = makeSectionTitle("Address")
         addressCard.addSubview(addressTitle)
         addressCard.addSubview(addressView)
@@ -429,6 +500,39 @@ final class CheckoutViewController: UIViewController {
         ])
     }
 
+    private func setupLoadingOverlay() {
+        view.addSubview(loadingOverlay)
+        loadingOverlay.addSubview(loadingCard)
+
+        loadingCard.addSubview(loadingSpinner)
+        loadingCard.addSubview(loadingTitleLabel)
+        loadingCard.addSubview(loadingSubtitleLabel)
+
+        NSLayoutConstraint.activate([
+            loadingOverlay.topAnchor.constraint(equalTo: view.topAnchor),
+            loadingOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            loadingOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            loadingOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            loadingCard.centerXAnchor.constraint(equalTo: loadingOverlay.centerXAnchor),
+            loadingCard.centerYAnchor.constraint(equalTo: loadingOverlay.centerYAnchor),
+            loadingCard.leadingAnchor.constraint(greaterThanOrEqualTo: loadingOverlay.leadingAnchor, constant: 24),
+            loadingCard.trailingAnchor.constraint(lessThanOrEqualTo: loadingOverlay.trailingAnchor, constant: -24),
+
+            loadingSpinner.topAnchor.constraint(equalTo: loadingCard.topAnchor, constant: 18),
+            loadingSpinner.centerXAnchor.constraint(equalTo: loadingCard.centerXAnchor),
+
+            loadingTitleLabel.topAnchor.constraint(equalTo: loadingSpinner.bottomAnchor, constant: 12),
+            loadingTitleLabel.leadingAnchor.constraint(equalTo: loadingCard.leadingAnchor, constant: 16),
+            loadingTitleLabel.trailingAnchor.constraint(equalTo: loadingCard.trailingAnchor, constant: -16),
+
+            loadingSubtitleLabel.topAnchor.constraint(equalTo: loadingTitleLabel.bottomAnchor, constant: 6),
+            loadingSubtitleLabel.leadingAnchor.constraint(equalTo: loadingCard.leadingAnchor, constant: 16),
+            loadingSubtitleLabel.trailingAnchor.constraint(equalTo: loadingCard.trailingAnchor, constant: -16),
+            loadingSubtitleLabel.bottomAnchor.constraint(equalTo: loadingCard.bottomAnchor, constant: -16)
+        ])
+    }
+
     // MARK: - UI helpers
 
     private func makeSectionTitle(_ text: String) -> UILabel {
@@ -478,7 +582,6 @@ final class CheckoutViewController: UIViewController {
     }
 
     private func formatCardNumber(_ digits: String) -> String {
-        // "4242424242424242" -> "4242 4242 4242 4242"
         var out = ""
         for (i, ch) in digits.enumerated() {
             if i != 0 && i % 4 == 0 { out.append(" ") }
@@ -488,7 +591,6 @@ final class CheckoutViewController: UIViewController {
     }
 
     private func formatExpiry(_ digits: String) -> String {
-        // "0127" -> "01/27", "0" -> "0", "01" -> "01", "012" -> "01/2"
         let d = Array(digits)
         if d.count <= 2 {
             return String(d)
@@ -500,7 +602,7 @@ final class CheckoutViewController: UIViewController {
     }
 }
 
-// MARK: - UITextViewDelegate (Address placeholder)
+// MARK: - UITextViewDelegate
 extension CheckoutViewController: UITextViewDelegate {
     func textViewDidChange(_ textView: UITextView) {
         addressPlaceholder.isHidden = !textView.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -522,26 +624,20 @@ extension CheckoutViewController: UITextFieldDelegate {
                    shouldChangeCharactersIn range: NSRange,
                    replacementString string: String) -> Bool {
 
-        // backspace / normal behavior for non-number? -> biz sadece digit istiyoruz
         if string.isEmpty { return true }
-
-        // sadece rakam
         guard string.allSatisfy({ $0.isNumber }) else { return false }
 
         if textField === cardNumberField {
-            // max 16 digit
             let currentDigits = digitsOnly(textField.text)
             return currentDigits.count < 16
         }
 
         if textField === expiryField {
-            // max 4 digit (MMYY) -> UI'da MM/YY
             let currentDigits = digitsOnly(textField.text)
             return currentDigits.count < 4
         }
 
         if textField === cvvField {
-            // max 3 digit
             let currentDigits = digitsOnly(textField.text)
             return currentDigits.count < 3
         }

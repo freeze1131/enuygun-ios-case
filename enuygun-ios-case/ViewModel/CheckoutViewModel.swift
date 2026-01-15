@@ -116,12 +116,19 @@ final class CheckoutViewModel {
 
         Task { [weak self] in
             guard let self else { return }
-            try? await Task.sleep(nanoseconds: 900_000_000)
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
 
-            self.cartStore.clear()
+            let success = Int.random(in: 1...10) <= 9
             self.state = .idle
-            self.onPaymentSuccess?()
+
+            if success {
+                self.cartStore.clear()
+                self.onPaymentSuccess?()
+            } else {
+                self.onPaymentFailure?("Payment failed. Please try again.")
+            }
         }
+
     }
 
     // MARK: - Helpers
