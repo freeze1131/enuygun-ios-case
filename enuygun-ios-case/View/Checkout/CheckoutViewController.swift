@@ -322,23 +322,27 @@ final class CheckoutViewController: UIViewController {
         guard !phone.isEmpty else { showError("Please enter your phone number."); return }
         guard !address.isEmpty, !addressIsPlaceholder else { showError("Please enter your address."); return }
 
-//        let paymentVC = PaymentViewController(
-//            totalAmount: total,
-//            onSuccess: { [weak self] in
-//                // Payment success: clear cart
-//                CartStore.shared.clear()
-//                self?.navigationController?.popToRootViewController(animated: true)
-//                self?.tabBarController?.selectedIndex = 0
-//            }
-//        )
-//        navigationController?.pushViewController(paymentVC, animated: true)
+        let paymentVC = PaymentViewController(
+            totalAmount: total,
+            onSuccess: { [weak self] in
+                // Payment success: clear cart
+                CartStore.shared.clear()
+                self?.navigationController?.popToRootViewController(animated: true)
+                self?.tabBarController?.selectedIndex = 0
+            }
+        )
+        navigationController?.pushViewController(paymentVC, animated: true)
     }
 
     private func showError(_ message: String) {
-        let alert = UIAlertController(title: "Missing Info", message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        ToastPresenter.show(
+            on: self,
+            title: "Missing Info",
+            message: message,
+            primaryAction: .init(title: "OK", style: .default)
+        )
     }
+
 
     @objc private func dismissKeyboard() {
         view.endEditing(true)

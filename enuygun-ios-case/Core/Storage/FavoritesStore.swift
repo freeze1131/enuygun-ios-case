@@ -18,21 +18,52 @@ final class FavoritesStore {
         load()
     }
 
+    // MARK: - Queries
     func isFavorite(_ product: Product) -> Bool {
         favorites.contains(where: { $0.id == product.id })
     }
 
+    func all() -> [Product] {
+        favorites
+    }
+
+    // MARK: - Mutations
     func toggle(_ product: Product) {
         if isFavorite(product) {
             favorites.removeAll { $0.id == product.id }
         } else {
             favorites.insert(product, at: 0)
         }
+        persistAndNotify()
+    }
+
+    func add(_ product: Product) {
+        guard !isFavorite(product) else { return }
+        favorites.insert(product, at: 0)
+        persistAndNotify()
+    }
+
+    func remove(_ product: Product) {
+        favorites.removeAll { $0.id == product.id }
+        persistAndNotify()
+    }
+
+    func remove(productId: Int) {
+        favorites.removeAll { $0.id == productId }
+        persistAndNotify()
+    }
+
+    func clear() {
+        favorites.removeAll()
+        persistAndNotify()
+    }
+
+    // MARK: - Persistence
+    private func persistAndNotify() {
         save()
         onChange?()
     }
 
-    // MARK: - Persistence
     private func save() {
         do {
             let data = try JSONEncoder().encode(favorites)

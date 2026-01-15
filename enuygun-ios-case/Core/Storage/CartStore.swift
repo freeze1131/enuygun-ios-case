@@ -16,6 +16,11 @@ final class CartStore {
             onChange?()
         }
     }
+    
+    var totalItemsCount: Int {
+        items.reduce(0) { $0 + $1.quantity }
+    }
+
 
     var onChange: (() -> Void)?
 
@@ -78,7 +83,6 @@ final class CartStore {
             let data = try JSONEncoder().encode(items)
             UserDefaults.standard.set(data, forKey: storageKey)
         } catch {
-            // case için log yeterli
             print("CartStore save error: \(error)")
         }
     }

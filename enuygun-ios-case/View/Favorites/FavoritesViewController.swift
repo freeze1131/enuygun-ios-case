@@ -9,89 +9,54 @@ import UIKit
 
 final class FavoritesViewController: UIViewController {
 
-    private let favoritesStore = FavoritesStore.shared
-    private let cartStore = CartStore.shared
-
+    private let viewModel = FavoritesViewModel()
     private var collectionView: UICollectionView!
 
-    private var items: [Product] = []
-    
-    // Empty state
-    private let emptyStateView: UIView = {
-        let v = UIView()
-        v.translatesAutoresizingMaskIntoConstraints = false
-        return v
-    }()
-
-    private let emptyTitleLabel: UILabel = {
+    private let emptyStateLabel: UILabel = {
         let l = UILabel()
-        l.text = "Your favorites are empty."
-        l.font = .systemFont(ofSize: 20, weight: .bold)
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
-
-    private let emptySubtitleLabel: UILabel = {
-        let l = UILabel()
-        l.text = "You can go to home to add products to the favorites."
-        l.font = .systemFont(ofSize: 14)
+        l.text = "No favorites yet."
         l.textColor = .secondaryLabel
-        l.numberOfLines = 0
+        l.font = .systemFont(ofSize: 16, weight: .semibold)
         l.textAlignment = .center
+        l.numberOfLines = 0
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
-    }()
-
-    private let goHomeButton: UIButton = {
-        let b = UIButton(type: .system)
-        b.setTitle("Go to Home", for: .normal)
-        b.titleLabel?.font = .systemFont(ofSize: 15, weight: .bold)
-        b.backgroundColor = .secondarySystemGroupedBackground
-        b.setTitleColor(.label, for: .normal)
-        b.layer.cornerRadius = 14
-        b.layer.borderWidth = 1
-        b.layer.borderColor = UIColor.separator.cgColor
-        b.translatesAutoresizingMaskIntoConstraints = false
-        return b
     }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
-
         title = "Favorites"
-        navigationItem.largeTitleDisplayMode = .never
 
         setupCollectionView()
         setupEmptyState()
-        bindStores()
-        reloadData()
-        
-        
-        goHomeButton.addTarget(self, action: #selector(goHomeTapped), for: .touchUpInside)
+        bindViewModel()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        reloadData()
+        viewModel.load()
     }
 
-    private func bindStores() {
-        favoritesStore.onChange = { [weak self] in
-            self?.reloadData()
+    private func bindViewModel() {
+        viewModel.onUpdate = { [weak self] in
+            guard let self else { return }
+            self.collectionView.reloadData()
+            self.emptyStateLabel.isHidden = !self.viewModel.isEmpty
         }
+
+        viewModel.load()
     }
 
-    private func reloadData() {
-        items = favoritesStore.favorites
-        navigationItem.title = "Favorites (\(items.count))"
-        
-        collectionView.reloadData()
-        
-        
-        let hasItems = !items.isEmpty
-        emptyStateView.isHidden = hasItems
-        
+    private func setupEmptyState() {
+        view.addSubview(emptyStateLabel)
+        NSLayoutConstraint.activate([
+            emptyStateLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            emptyStateLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            emptyStateLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            emptyStateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
+        ])
+        emptyStateLabel.isHidden = true
     }
 
     private func setupCollectionView() {
@@ -99,7 +64,12 @@ final class FavoritesViewController: UIViewController {
         layout.scrollDirection = .vertical
         layout.minimumLineSpacing = 12
         layout.minimumInteritemSpacing = 12
-        layout.sectionInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+
+        let sideInset: CGFloat = 12
+        let availableWidth = view.bounds.width - (sideInset * 2) - 12
+        let itemWidth = floor(availableWidth / 2)
+        layout.itemSize = CGSize(width: itemWidth, height: itemWidth + 54)
+        layout.sectionInset = UIEdgeInsets(top: 12, left: sideInset, bottom: 12, right: sideInset)
 
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
@@ -107,6 +77,7 @@ final class FavoritesViewController: UIViewController {
 
         collectionView.dataSource = self
         collectionView.delegate = self
+
         collectionView.register(FavoriteCell.self, forCellWithReuseIdentifier: FavoriteCell.reuseIdentifier)
 
         view.addSubview(collectionView)
@@ -118,95 +89,70 @@ final class FavoritesViewController: UIViewController {
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
-    
-    private func setupEmptyState() {
-        view.addSubview(emptyStateView)
-        emptyStateView.addSubview(emptyTitleLabel)
-        emptyStateView.addSubview(emptySubtitleLabel)
-        emptyStateView.addSubview(goHomeButton)
-
-        NSLayoutConstraint.activate([
-            emptyStateView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            emptyStateView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            emptyStateView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            emptyStateView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-
-            emptyTitleLabel.topAnchor.constraint(equalTo: emptyStateView.topAnchor),
-            emptyTitleLabel.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
-
-            emptySubtitleLabel.topAnchor.constraint(equalTo: emptyTitleLabel.bottomAnchor, constant: 8),
-            emptySubtitleLabel.leadingAnchor.constraint(equalTo: emptyStateView.leadingAnchor),
-            emptySubtitleLabel.trailingAnchor.constraint(equalTo: emptyStateView.trailingAnchor),
-
-            goHomeButton.topAnchor.constraint(equalTo: emptySubtitleLabel.bottomAnchor, constant: 16),
-            goHomeButton.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
-            goHomeButton.heightAnchor.constraint(equalToConstant: 44),
-            goHomeButton.widthAnchor.constraint(equalToConstant: 160),
-            goHomeButton.bottomAnchor.constraint(equalTo: emptyStateView.bottomAnchor)
-        ])
-    }
-    
-    @objc private func goHomeTapped() {
-        tabBarController?.selectedIndex = 0
-    }
 }
 
 extension FavoritesViewController: UICollectionViewDataSource {
 
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        items.count
+        viewModel.items.count
     }
 
-    func collectionView(_ collectionView: UICollectionView,
-                        cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-
+    func collectionView(
+        _ collectionView: UICollectionView,
+        cellForItemAt indexPath: IndexPath
+    ) -> UICollectionViewCell {
         guard let cell = collectionView.dequeueReusableCell(
             withReuseIdentifier: FavoriteCell.reuseIdentifier,
             for: indexPath
-        ) as? FavoriteCell else {
-            return UICollectionViewCell()
-        }
+        ) as? FavoriteCell else { return UICollectionViewCell() }
 
-        let product = items[indexPath.item]
-        cell.configure(with: product)
+        let vd = viewModel.cellViewData(at: indexPath.item)
+        cell.configure(viewData: vd)
+
+        cell.onRemove = { [weak self] in
+            self?.confirmRemove(index: indexPath.item)
+        }
 
         cell.onAddToCart = { [weak self] in
             guard let self else { return }
-            self.cartStore.add(product)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            self.animateCellAction(cell)
+            self.viewModel.addToCart(at: indexPath.item)
+            self.showToast("Added to Cart")
         }
 
-        cell.onRemove = { [weak self] in
-            guard let self else { return }
-            self.favoritesStore.toggle(product)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }
 
         return cell
+    }
+    
+
+    private func confirmRemove(index: Int) {
+        ToastPresenter.show(
+            on: self,
+            title: "Remove Favorite",
+            message: "Remove this item from favorites?",
+            primaryAction: .init(title: "Remove", style: .destructive) { [weak self] in
+                self?.viewModel.remove(at: index)
+            },
+            secondaryAction: .init(title: "Cancel", style: .cancel)
+        )
+    }
+
+
+    private func animateCellAction(_ cell: UICollectionViewCell) {
+        UIView.animate(withDuration: 0.12, animations: {
+            cell.transform = CGAffineTransform(scaleX: 0.97, y: 0.97)
+        }, completion: { _ in
+            UIView.animate(withDuration: 0.12) {
+                cell.transform = .identity
+            }
+        })
     }
 }
 
 extension FavoritesViewController: UICollectionViewDelegate {
-
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let product = items[indexPath.item]
-        let detailVC = ProductDetailViewController(product: product)
-        navigationController?.pushViewController(detailVC, animated: true)
-    }
-}
-
-extension FavoritesViewController: UICollectionViewDelegateFlowLayout {
-
-    func collectionView(_ collectionView: UICollectionView,
-                        layout collectionViewLayout: UICollectionViewLayout,
-                        sizeForItemAt indexPath: IndexPath) -> CGSize {
-
-        let inset: CGFloat = 12
-        let spacing: CGFloat = 12
-        let totalHorizontal = inset * 2 + spacing
-        let width = (collectionView.bounds.width - totalHorizontal) / 2
-
-        let height = width * 1.55
-        return CGSize(width: floor(width), height: floor(height))
+        let product = viewModel.product(at: indexPath.item)
+        let vc = ProductDetailViewController(product: product)
+        navigationController?.pushViewController(vc, animated: true)
     }
 }

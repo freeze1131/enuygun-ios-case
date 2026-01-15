@@ -7,6 +7,21 @@
 
 import UIKit
 
+struct CartItemCellViewData {
+    let title: String
+    let quantityText: String
+
+    let priceText: String
+    let oldPriceText: NSAttributedString?
+    let discountText: String?
+    let isDiscountHidden: Bool
+
+    let imageURL: String
+}
+
+
+
+
 final class CartItemCell: UICollectionViewCell {
 
     static let reuseIdentifier = "CartItemCell"
@@ -244,40 +259,26 @@ final class CartItemCell: UICollectionViewCell {
         ])
     }
 
-    func configure(with item: CartItem) {
-        titleLabel.text = item.product.title
-        qtyLabel.text = "\(item.quantity)"
+    func configure(viewData: CartItemCellViewData) {
+        titleLabel.text = viewData.title
+        qtyLabel.text = viewData.quantityText
 
-        // Price
-        let price = item.product.price
-        if let discount = item.product.discountPercentage, discount > 0 {
-            let discounted = price * (1 - discount / 100)
-            priceLabel.text = String(format: "$%.2f", discounted)
+        priceLabel.text = viewData.priceText
+        oldPriceLabel.attributedText = viewData.oldPriceText
 
-            oldPriceLabel.attributedText = NSAttributedString(
-                string: String(format: "$%.2f", price),
-                attributes: [.strikethroughStyle: NSUnderlineStyle.single.rawValue]
-            )
-
-            discountLabel.text = "  %\(Int(discount)) OFF  "
-            discountLabel.isHidden = false
-        } else {
-            priceLabel.text = String(format: "$%.2f", price)
-            oldPriceLabel.attributedText = nil
-            discountLabel.text = nil
-            discountLabel.isHidden = true
-        }
+        discountLabel.text = viewData.discountText
+        discountLabel.isHidden = viewData.isDiscountHidden
 
         minusButton.isEnabled = true
         minusButton.alpha = 1.0
 
-        // Image loading (soft)
+        // Image loading (soft) - aynı davranış
         productImageView.image = nil
         productImageView.alpha = 0
         imagePlaceholderView.alpha = 1
         imageSpinner.startAnimating()
 
-        ImageLoader.shared.load(from: item.product.thumbnail) { [weak self] image in
+        ImageLoader.shared.load(from: viewData.imageURL) { [weak self] image in
             guard let self else { return }
             self.imageSpinner.stopAnimating()
 
@@ -293,6 +294,7 @@ final class CartItemCell: UICollectionViewCell {
             }
         }
     }
+
 
     // MARK: - Actions
 

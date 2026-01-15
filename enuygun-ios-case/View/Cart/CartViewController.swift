@@ -9,12 +9,10 @@ import UIKit
 
 final class CartViewController: UIViewController {
 
-    private let cartStore = CartStore.shared
-
+    private let viewModel = CartViewModel()
     private var collectionView: UICollectionView!
-    private var items: [CartItem] = []
 
-    // Bottom bar
+    // MARK: - Bottom Bar
     private let bottomBar: UIView = {
         let v = UIView()
         v.backgroundColor = .secondarySystemGroupedBackground
@@ -26,16 +24,9 @@ final class CartViewController: UIViewController {
 
     private let subtotalLabel: UILabel = {
         let l = UILabel()
-        l.font = .systemFont(ofSize: 15, weight: .semibold)
-        l.textColor = .secondaryLabel
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
-
-    private let subtotalValueLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 18, weight: .bold)
-        l.textColor = .label
+        l.font = .systemFont(ofSize: 14, weight: .semibold)
+        l.numberOfLines = 2
+        l.lineBreakMode = .byWordWrapping
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -43,7 +34,6 @@ final class CartViewController: UIViewController {
     private let checkoutButton: UIButton = {
         let b = UIButton(type: .system)
         b.setTitle("Checkout", for: .normal)
-        b.titleLabel?.font = .systemFont(ofSize: 16, weight: .bold)
         b.backgroundColor = .label
         b.setTitleColor(.systemBackground, for: .normal)
         b.layer.cornerRadius = 14
@@ -51,28 +41,39 @@ final class CartViewController: UIViewController {
         return b
     }()
 
-    // Empty state
+    // MARK: - Empty State
     private let emptyStateView: UIView = {
         let v = UIView()
         v.translatesAutoresizingMaskIntoConstraints = false
+        v.isHidden = true
         return v
+    }()
+
+    private let emptyIconView: UIImageView = {
+        let iv = UIImageView(image: UIImage(systemName: "cart"))
+        iv.tintColor = .secondaryLabel
+        iv.contentMode = .scaleAspectFit
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        return iv
     }()
 
     private let emptyTitleLabel: UILabel = {
         let l = UILabel()
-        l.text = "Your cart is empty."
-        l.font = .systemFont(ofSize: 20, weight: .bold)
+        l.text = "Your cart is empty"
+        l.font = .systemFont(ofSize: 18, weight: .bold)
+        l.textColor = .label
+        l.textAlignment = .center
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
     private let emptySubtitleLabel: UILabel = {
         let l = UILabel()
-        l.text = "You can go to home to add products to the cart."
-        l.font = .systemFont(ofSize: 14)
+        l.text = "Add items from Home to see them here."
+        l.font = .systemFont(ofSize: 14, weight: .semibold)
         l.textColor = .secondaryLabel
-        l.numberOfLines = 0
         l.textAlignment = .center
+        l.numberOfLines = 0
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -80,71 +81,74 @@ final class CartViewController: UIViewController {
     private let goHomeButton: UIButton = {
         let b = UIButton(type: .system)
         b.setTitle("Go to Home", for: .normal)
-        b.titleLabel?.font = .systemFont(ofSize: 15, weight: .bold)
-        b.backgroundColor = .secondarySystemGroupedBackground
-        b.setTitleColor(.label, for: .normal)
+        b.titleLabel?.font = .systemFont(ofSize: 16, weight: .bold)
+        b.backgroundColor = .label
+        b.setTitleColor(.systemBackground, for: .normal)
         b.layer.cornerRadius = 14
-        b.layer.borderWidth = 1
-        b.layer.borderColor = UIColor.separator.cgColor
+        b.contentEdgeInsets = UIEdgeInsets(top: 12, left: 18, bottom: 12, right: 18)
         b.translatesAutoresizingMaskIntoConstraints = false
         return b
     }()
 
+    // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
-        navigationItem.title = "Cart"
-        navigationItem.largeTitleDisplayMode = .never
-        
+        title = "Cart"
+
         setupBottomBar()
         setupCollectionView()
         setupEmptyState()
 
+        bindViewModel()
+
         checkoutButton.addTarget(self, action: #selector(checkoutTapped), for: .touchUpInside)
         goHomeButton.addTarget(self, action: #selector(goHomeTapped), for: .touchUpInside)
-
-        cartStore.onChange = { [weak self] in
-            self?.reloadData()
-        }
-
-        reloadData()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        reloadData()
+        viewModel.load()
+        applyEmptyState()
     }
 
-    private func reloadData() {
-        items = cartStore.items
+    // MARK: - Binding
+    private func bindViewModel() {
+        viewModel.onUpdate = { [weak self] in
+            guard let self else { return }
+            self.subtotalLabel.text = "Subtotal\n\(self.viewModel.subtotalText)"
+            self.collectionView.reloadData()
+            self.applyEmptyState()
+        }
 
-        print("🛒 Cart items count:", items.count)
-
-        collectionView.reloadData()
-
-        subtotalLabel.text = "Subtotal"
-        subtotalValueLabel.text = String(format: "$%.2f", cartStore.subtotal)
-
-        let hasItems = !items.isEmpty
-        bottomBar.isHidden = !hasItems
-        emptyStateView.isHidden = hasItems
+        viewModel.load()
+        subtotalLabel.text = "Subtotal\n\(viewModel.subtotalText)"
+        applyEmptyState()
     }
 
+    private func applyEmptyState() {
+        let isEmpty = viewModel.items.isEmpty
 
+        bottomBar.isHidden = isEmpty
+
+        emptyStateView.isHidden = !isEmpty
+
+        collectionView.isHidden = false 
+    }
+
+    // MARK: - UI Setup
     private func setupCollectionView() {
         let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .vertical
-        layout.minimumLineSpacing = 12
-        layout.sectionInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         layout.itemSize = CGSize(width: view.bounds.width - 24, height: 110)
+        layout.sectionInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
 
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.backgroundColor = .clear
+        collectionView.register(CartItemCell.self, forCellWithReuseIdentifier: CartItemCell.reuseIdentifier)
 
         collectionView.dataSource = self
         collectionView.delegate = self
-        collectionView.register(CartItemCell.self, forCellWithReuseIdentifier: CartItemCell.reuseIdentifier)
 
         view.addSubview(collectionView)
 
@@ -159,36 +163,39 @@ final class CartViewController: UIViewController {
     private func setupBottomBar() {
         view.addSubview(bottomBar)
         bottomBar.addSubview(subtotalLabel)
-        bottomBar.addSubview(subtotalValueLabel)
         bottomBar.addSubview(checkoutButton)
 
         NSLayoutConstraint.activate([
             bottomBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            bottomBar.heightAnchor.constraint(equalToConstant: 96),
 
-            // ✅ BU SATIRLAR KRİTİK: bar yüksekliği sabit/limitli olsun
-            bottomBar.heightAnchor.constraint(equalToConstant: 92),
-
-            subtotalLabel.topAnchor.constraint(equalTo: bottomBar.topAnchor, constant: 12),
             subtotalLabel.leadingAnchor.constraint(equalTo: bottomBar.leadingAnchor, constant: 16),
-
-            subtotalValueLabel.topAnchor.constraint(equalTo: subtotalLabel.bottomAnchor, constant: 2),
-            subtotalValueLabel.leadingAnchor.constraint(equalTo: subtotalLabel.leadingAnchor),
+            subtotalLabel.centerYAnchor.constraint(equalTo: bottomBar.centerYAnchor),
 
             checkoutButton.trailingAnchor.constraint(equalTo: bottomBar.trailingAnchor, constant: -16),
             checkoutButton.centerYAnchor.constraint(equalTo: bottomBar.centerYAnchor),
             checkoutButton.widthAnchor.constraint(equalToConstant: 140),
-            checkoutButton.heightAnchor.constraint(equalToConstant: 50)
+            checkoutButton.heightAnchor.constraint(equalToConstant: 44)
         ])
     }
 
-
     private func setupEmptyState() {
         view.addSubview(emptyStateView)
-        emptyStateView.addSubview(emptyTitleLabel)
-        emptyStateView.addSubview(emptySubtitleLabel)
-        emptyStateView.addSubview(goHomeButton)
+
+        let stack = UIStackView(arrangedSubviews: [
+            emptyIconView,
+            emptyTitleLabel,
+            emptySubtitleLabel,
+            goHomeButton
+        ])
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 10
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        emptyStateView.addSubview(stack)
 
         NSLayoutConstraint.activate([
             emptyStateView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -196,54 +203,43 @@ final class CartViewController: UIViewController {
             emptyStateView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             emptyStateView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
 
-            emptyTitleLabel.topAnchor.constraint(equalTo: emptyStateView.topAnchor),
-            emptyTitleLabel.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
+            emptyIconView.heightAnchor.constraint(equalToConstant: 54),
+            emptyIconView.widthAnchor.constraint(equalToConstant: 54),
 
-            emptySubtitleLabel.topAnchor.constraint(equalTo: emptyTitleLabel.bottomAnchor, constant: 8),
-            emptySubtitleLabel.leadingAnchor.constraint(equalTo: emptyStateView.leadingAnchor),
-            emptySubtitleLabel.trailingAnchor.constraint(equalTo: emptyStateView.trailingAnchor),
-
-            goHomeButton.topAnchor.constraint(equalTo: emptySubtitleLabel.bottomAnchor, constant: 16),
-            goHomeButton.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
-            goHomeButton.heightAnchor.constraint(equalToConstant: 44),
-            goHomeButton.widthAnchor.constraint(equalToConstant: 160),
-            goHomeButton.bottomAnchor.constraint(equalTo: emptyStateView.bottomAnchor)
+            stack.topAnchor.constraint(equalTo: emptyStateView.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: emptyStateView.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: emptyStateView.trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: emptyStateView.bottomAnchor)
         ])
     }
-    
-    private func confirmRemove(productTitle: String, onConfirm: @escaping () -> Void) {
-        let alert = UIAlertController(
-            title: "Remove item?",
-            message: "\(productTitle) will be removed from your cart.",
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Remove", style: .destructive) { _ in
-            onConfirm()
-        })
-        present(alert, animated: true)
-    }
 
-
-    @objc private func goHomeTapped() {
-        tabBarController?.selectedIndex = 0
-    }
-
+    // MARK: - Actions
     @objc private func checkoutTapped() {
         let vc = CheckoutViewController()
         navigationController?.pushViewController(vc, animated: true)
     }
+
+    @objc private func goHomeTapped() {
+        // Home tab index 0 varsayımı
+        tabBarController?.selectedIndex = 0
+        // Eğer Home içinde Navigation root’a dönmek istersen:
+        if let nav = tabBarController?.viewControllers?.first as? UINavigationController {
+            nav.popToRootViewController(animated: true)
+        }
+    }
 }
 
+// MARK: - UICollectionViewDataSource
 extension CartViewController: UICollectionViewDataSource {
 
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        items.count
+        viewModel.items.count
     }
 
-    func collectionView(_ collectionView: UICollectionView,
-                        cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-
+    func collectionView(
+        _ collectionView: UICollectionView,
+        cellForItemAt indexPath: IndexPath
+    ) -> UICollectionViewCell {
         guard let cell = collectionView.dequeueReusableCell(
             withReuseIdentifier: CartItemCell.reuseIdentifier,
             for: indexPath
@@ -251,48 +247,44 @@ extension CartViewController: UICollectionViewDataSource {
             return UICollectionViewCell()
         }
 
-        let item = items[indexPath.item]
-        cell.configure(with: item)
+        let vd = viewModel.cellViewData(at: indexPath.item)
+        cell.configure(viewData: vd)
 
         cell.onIncrease = { [weak self] in
-            self?.cartStore.increase(productId: item.product.id)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            self?.viewModel.increaseQuantity(at: indexPath.item)
         }
 
         cell.onDecrease = { [weak self] in
             guard let self else { return }
 
-            if item.quantity <= 1 {
-                self.confirmRemove(productTitle: item.product.title) {
-                    self.cartStore.remove(productId: item.product.id)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                }
+            if self.viewModel.shouldConfirmRemove(at: indexPath.item) {
+                self.confirmRemove(index: indexPath.item)
             } else {
-                self.cartStore.decrease(productId: item.product.id)
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                self.viewModel.decreaseQuantity(at: indexPath.item)
             }
         }
 
         cell.onRemove = { [weak self] in
-            guard let self else { return }
-
-            self.confirmRemove(productTitle: item.product.title) {
-                self.cartStore.remove(productId: item.product.id)
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            }
+            self?.confirmRemove(index: indexPath.item)
         }
-
 
         return cell
     }
 }
 
+// MARK: - UICollectionViewDelegate + Remove Confirmation
 extension CartViewController: UICollectionViewDelegate {
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        // İstersen cart’tan da detail’e gidebilir
-        let product = items[indexPath.item].product
-        let detailVC = ProductDetailViewController(product: product)
-        navigationController?.pushViewController(detailVC, animated: true)
-    }
-}
 
+    private func confirmRemove(index: Int) {
+        ToastPresenter.show(
+            on: self,
+            title: "Remove Item",
+            message: "Remove this item from your cart?",
+            primaryAction: .init(title: "Remove", style: .destructive) { [weak self] in
+                self?.viewModel.removeItem(at: index)
+            },
+            secondaryAction: .init(title: "Cancel", style: .cancel)
+        )
+    }
+
+}

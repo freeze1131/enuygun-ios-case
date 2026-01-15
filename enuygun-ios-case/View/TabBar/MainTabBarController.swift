@@ -11,8 +11,13 @@ final class MainTabBarController: UITabBarController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        CartStore.shared.onChange = { [weak self] in
+            self?.updateCartBadge()
+        }
+        
         setupTabs()
         configureTabBarAppearance()
+        updateCartBadge()
     }
 
     private func setupTabs() {
@@ -56,6 +61,18 @@ final class MainTabBarController: UITabBarController {
             tabBar.scrollEdgeAppearance = appearance
         }
     }
+    
+    private func updateCartBadge() {
+        let count = CartStore.shared.totalItemsCount
+        let cartIndex = 2 
+
+        if count > 0 {
+            tabBar.items?[cartIndex].badgeValue = "\(count)"
+        } else {
+            tabBar.items?[cartIndex].badgeValue = nil
+        }
+    }
+
 
 }
 

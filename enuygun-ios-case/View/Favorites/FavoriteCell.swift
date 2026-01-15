@@ -10,26 +10,24 @@ import UIKit
 final class FavoriteCell: UICollectionViewCell {
 
     static let reuseIdentifier = "FavoriteCell"
-    var onAddToCart: (() -> Void)?
-    var onRemove: (() -> Void)?
 
-    // MARK: - Views
+    var onRemove: (() -> Void)?
+    var onAddToCart: (() -> Void)?
 
     private let cardView: UIView = {
         let v = UIView()
-        v.backgroundColor = .secondarySystemGroupedBackground
-        v.layer.cornerRadius = 18
+        v.backgroundColor = .systemBackground
+        v.layer.cornerRadius = 16
+        v.layer.masksToBounds = true
         v.layer.borderWidth = 1
         v.layer.borderColor = UIColor.separator.cgColor
-        v.layer.masksToBounds = true
         v.translatesAutoresizingMaskIntoConstraints = false
         return v
     }()
 
-    // Image
-    private let imagePlaceholderView: UIView = {
+    private let topOverlayContainer: UIView = {
         let v = UIView()
-        v.backgroundColor = .tertiarySystemGroupedBackground
+        v.backgroundColor = .clear
         v.translatesAutoresizingMaskIntoConstraints = false
         return v
     }()
@@ -42,6 +40,13 @@ final class FavoriteCell: UICollectionViewCell {
         return iv
     }()
 
+    private let imagePlaceholderView: UIView = {
+        let v = UIView()
+        v.backgroundColor = .secondarySystemGroupedBackground
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+
     private let imageSpinner: UIActivityIndicatorView = {
         let s = UIActivityIndicatorView(style: .medium)
         s.hidesWhenStopped = true
@@ -49,99 +54,70 @@ final class FavoriteCell: UICollectionViewCell {
         return s
     }()
 
-    // Top title inside card (small)
-    private let headerTitleLabel: UILabel = {
+    private let discountBadge: UILabel = {
         let l = UILabel()
-        l.font = .systemFont(ofSize: 12, weight: .semibold)
-        l.textColor = .secondaryLabel
-        l.numberOfLines = 1
-        l.lineBreakMode = .byTruncatingTail
+        l.font = .systemFont(ofSize: 12, weight: .bold)
+        l.textColor = .white
+        l.backgroundColor = .systemRed
+        l.layer.cornerRadius = 10
+        l.layer.masksToBounds = true
+        l.textAlignment = .center
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
-    // Main title under image
+    private let removeButton: UIButton = {
+        let b = UIButton(type: .system)
+        b.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        b.tintColor = .label
+        b.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.75)
+        b.layer.cornerRadius = 14
+        b.clipsToBounds = true
+        b.translatesAutoresizingMaskIntoConstraints = false
+        return b
+    }()
+
+    private let addButton: UIButton = {
+        let b = UIButton(type: .system)
+        b.setImage(UIImage(systemName: "plus"), for: .normal)
+        b.tintColor = .label
+        b.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.75)
+        b.layer.cornerRadius = 14
+        b.clipsToBounds = true
+        b.translatesAutoresizingMaskIntoConstraints = false
+        return b
+    }()
+
     private let titleLabel: UILabel = {
         let l = UILabel()
-        l.font = .systemFont(ofSize: 14, weight: .semibold)
+        l.font = .systemFont(ofSize: 13, weight: .semibold)
         l.textColor = .label
         l.numberOfLines = 2
-        l.lineBreakMode = .byTruncatingTail
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
-    // Price row
     private let priceLabel: UILabel = {
         let l = UILabel()
-        l.font = .systemFont(ofSize: 15, weight: .bold)
-        l.textColor = .label
+        l.font = .systemFont(ofSize: 16, weight: .bold)
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
     private let oldPriceLabel: UILabel = {
         let l = UILabel()
-        l.font = .systemFont(ofSize: 12, weight: .semibold)
+        l.font = .systemFont(ofSize: 12)
         l.textColor = .secondaryLabel
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
-    private let priceRow: UIStackView = {
-        let s = UIStackView()
-        s.axis = .horizontal
-        s.spacing = 6
-        s.alignment = .center
-        s.translatesAutoresizingMaskIntoConstraints = false
-        return s
-    }()
-
-    // Discount chip
-    private let discountLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 12, weight: .bold)
-        l.textColor = .systemRed
-        l.backgroundColor = UIColor.systemRed.withAlphaComponent(0.10)
-        l.layer.cornerRadius = 10
-        l.layer.masksToBounds = true
-        l.isHidden = true
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
-
-    // Overlay buttons
-    private let addButton: UIButton = {
-        let b = UIButton(type: .system)
-        b.setImage(UIImage(systemName: "plus"), for: .normal)
-        b.tintColor = .label
-        b.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.75)
-        b.layer.cornerRadius = 16
-        b.layer.masksToBounds = true
-        b.layer.borderWidth = 1
-        b.layer.borderColor = UIColor.separator.cgColor
-        b.translatesAutoresizingMaskIntoConstraints = false
-        return b
-    }()
-
-    private let removeButton: UIButton = {
-        let b = UIButton(type: .system)
-        b.setImage(UIImage(systemName: "heart.slash"), for: .normal)
-        b.tintColor = .systemRed
-        b.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.75)
-        b.layer.cornerRadius = 16
-        b.layer.masksToBounds = true
-        b.layer.borderWidth = 1
-        b.layer.borderColor = UIColor.separator.cgColor
-        b.translatesAutoresizingMaskIntoConstraints = false
-        return b
-    }()
-
-    // MARK: - Init
-
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
+
+        removeButton.addTarget(self, action: #selector(removeTapped), for: .touchUpInside)
+        addButton.addTarget(self, action: #selector(addTapped), for: .touchUpInside)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -154,61 +130,30 @@ final class FavoriteCell: UICollectionViewCell {
         imagePlaceholderView.alpha = 1
         imageSpinner.stopAnimating()
 
-        headerTitleLabel.text = nil
-        titleLabel.text = nil
+        discountBadge.isHidden = true
+        discountBadge.text = nil
 
+        titleLabel.text = nil
         priceLabel.text = nil
         oldPriceLabel.attributedText = nil
-        oldPriceLabel.isHidden = true
-
-        discountLabel.text = nil
-        discountLabel.isHidden = true
-
-        onAddToCart = nil
-        onRemove = nil
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        // Soft shadow on container (premium)
-        contentView.layer.masksToBounds = false
-        contentView.layer.shadowOpacity = 0.08
-        contentView.layer.shadowRadius = 10
-        contentView.layer.shadowOffset = CGSize(width: 0, height: 6)
-        contentView.layer.shadowColor = UIColor.black.cgColor
-        contentView.layer.shadowPath = UIBezierPath(
-            roundedRect: cardView.frame,
-            cornerRadius: cardView.layer.cornerRadius
-        ).cgPath
     }
 
     private func setupUI() {
         contentView.backgroundColor = .clear
         contentView.addSubview(cardView)
 
-        // Image stack
-        cardView.addSubview(imagePlaceholderView)
+        cardView.addSubview(topOverlayContainer)
         cardView.addSubview(productImageView)
+        cardView.addSubview(imagePlaceholderView)
         cardView.addSubview(imageSpinner)
 
-        // Overlay buttons
-        cardView.addSubview(addButton)
-        cardView.addSubview(removeButton)
+        topOverlayContainer.addSubview(discountBadge)
+        topOverlayContainer.addSubview(removeButton)
+        topOverlayContainer.addSubview(addButton)
 
-        // Texts
-        cardView.addSubview(headerTitleLabel)
         cardView.addSubview(titleLabel)
-        cardView.addSubview(priceRow)
-        priceRow.addArrangedSubview(priceLabel)
-        priceRow.addArrangedSubview(oldPriceLabel)
-        cardView.addSubview(discountLabel)
-
-        // Actions + animation on tap
-        addButton.addTarget(self, action: #selector(addTapped), for: .touchUpInside)
-        removeButton.addTarget(self, action: #selector(removeTapped), for: .touchUpInside)
-
-        oldPriceLabel.setContentHuggingPriority(.required, for: .horizontal)
-        oldPriceLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        cardView.addSubview(priceLabel)
+        cardView.addSubview(oldPriceLabel)
 
         NSLayoutConstraint.activate([
             cardView.topAnchor.constraint(equalTo: contentView.topAnchor),
@@ -216,93 +161,75 @@ final class FavoriteCell: UICollectionViewCell {
             cardView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
 
-            // Image area: square
-            imagePlaceholderView.topAnchor.constraint(equalTo: cardView.topAnchor),
-            imagePlaceholderView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
-            imagePlaceholderView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
-            imagePlaceholderView.heightAnchor.constraint(equalTo: cardView.widthAnchor),
+            topOverlayContainer.topAnchor.constraint(equalTo: cardView.topAnchor),
+            topOverlayContainer.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
+            topOverlayContainer.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
+            topOverlayContainer.heightAnchor.constraint(equalToConstant: 40),
 
-            productImageView.topAnchor.constraint(equalTo: imagePlaceholderView.topAnchor),
-            productImageView.leadingAnchor.constraint(equalTo: imagePlaceholderView.leadingAnchor),
-            productImageView.trailingAnchor.constraint(equalTo: imagePlaceholderView.trailingAnchor),
-            productImageView.bottomAnchor.constraint(equalTo: imagePlaceholderView.bottomAnchor),
+            productImageView.topAnchor.constraint(equalTo: topOverlayContainer.bottomAnchor),
+            productImageView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor),
+            productImageView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
+            productImageView.heightAnchor.constraint(equalTo: cardView.widthAnchor, constant: -40),
 
-            imageSpinner.centerXAnchor.constraint(equalTo: imagePlaceholderView.centerXAnchor),
-            imageSpinner.centerYAnchor.constraint(equalTo: imagePlaceholderView.centerYAnchor),
+            imagePlaceholderView.topAnchor.constraint(equalTo: productImageView.topAnchor),
+            imagePlaceholderView.leadingAnchor.constraint(equalTo: productImageView.leadingAnchor),
+            imagePlaceholderView.trailingAnchor.constraint(equalTo: productImageView.trailingAnchor),
+            imagePlaceholderView.bottomAnchor.constraint(equalTo: productImageView.bottomAnchor),
 
-            // Overlay buttons (bottom corners of image)
-            addButton.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -10),
-            addButton.topAnchor.constraint(equalTo: imagePlaceholderView.topAnchor, constant: 10),
-            addButton.widthAnchor.constraint(equalToConstant: 32),
-            addButton.heightAnchor.constraint(equalToConstant: 32),
+            imageSpinner.centerXAnchor.constraint(equalTo: productImageView.centerXAnchor),
+            imageSpinner.centerYAnchor.constraint(equalTo: productImageView.centerYAnchor),
 
-            removeButton.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 10),
-            removeButton.topAnchor.constraint(equalTo: imagePlaceholderView.topAnchor, constant: 10),
-            removeButton.widthAnchor.constraint(equalToConstant: 32),
-            removeButton.heightAnchor.constraint(equalToConstant: 32),
+            discountBadge.topAnchor.constraint(equalTo: topOverlayContainer.topAnchor, constant: 8),
+            discountBadge.leadingAnchor.constraint(equalTo: topOverlayContainer.leadingAnchor, constant: 8),
+            discountBadge.heightAnchor.constraint(equalToConstant: 20),
 
+            removeButton.topAnchor.constraint(equalTo: topOverlayContainer.topAnchor, constant: 6),
+            removeButton.trailingAnchor.constraint(equalTo: topOverlayContainer.trailingAnchor, constant: -8),
+            removeButton.widthAnchor.constraint(equalToConstant: 28),
+            removeButton.heightAnchor.constraint(equalToConstant: 28),
 
-            // Header title (small line)
-            headerTitleLabel.topAnchor.constraint(equalTo: imagePlaceholderView.bottomAnchor, constant: 10),
-            headerTitleLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
-            headerTitleLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
+            addButton.topAnchor.constraint(equalTo: topOverlayContainer.topAnchor, constant: 6),
+            addButton.trailingAnchor.constraint(equalTo: removeButton.leadingAnchor, constant: -6),
+            addButton.widthAnchor.constraint(equalToConstant: 28),
+            addButton.heightAnchor.constraint(equalToConstant: 28),
 
-            // Main title (2 lines)
-            titleLabel.topAnchor.constraint(equalTo: headerTitleLabel.bottomAnchor, constant: 6),
-            titleLabel.leadingAnchor.constraint(equalTo: headerTitleLabel.leadingAnchor),
-            titleLabel.trailingAnchor.constraint(equalTo: headerTitleLabel.trailingAnchor),
+            // text section (under image)
+            titleLabel.topAnchor.constraint(equalTo: productImageView.bottomAnchor, constant: 10),
+            titleLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 10),
+            titleLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -10),
 
-            // Price row
-            priceRow.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            priceRow.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            priceRow.trailingAnchor.constraint(lessThanOrEqualTo: cardView.trailingAnchor, constant: -12),
+            priceLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 6),
+            priceLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
 
-            // Discount chip
-            discountLabel.topAnchor.constraint(equalTo: priceRow.bottomAnchor, constant: 6),
-            discountLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            discountLabel.bottomAnchor.constraint(lessThanOrEqualTo: cardView.bottomAnchor, constant: -10)
+            oldPriceLabel.centerYAnchor.constraint(equalTo: priceLabel.centerYAnchor),
+            oldPriceLabel.leadingAnchor.constraint(equalTo: priceLabel.trailingAnchor, constant: 6),
+            oldPriceLabel.trailingAnchor.constraint(lessThanOrEqualTo: cardView.trailingAnchor, constant: -10),
+            oldPriceLabel.bottomAnchor.constraint(lessThanOrEqualTo: cardView.bottomAnchor, constant: -10)
         ])
     }
 
     // MARK: - Configure
 
-    func configure(with product: Product) {
-        // Header line: category (küçük)
-        headerTitleLabel.text = product.category.capitalized
-        // Main title
-        titleLabel.text = product.title
+    func configure(viewData: FavoritesViewModel.CellViewData) {
+        titleLabel.text = viewData.title
+        priceLabel.text = viewData.priceText
+        oldPriceLabel.attributedText = viewData.oldPriceText
 
-        // Price + discount
-        let price = product.price
-        if let discount = product.discountPercentage, discount > 0 {
-            let discounted = price * (1 - discount / 100)
-            priceLabel.text = String(format: "$%.2f", discounted)
-
-            let old = String(format: "$%.2f", price)
-            oldPriceLabel.attributedText = NSAttributedString(
-                string: old,
-                attributes: [.strikethroughStyle: NSUnderlineStyle.single.rawValue]
-            )
-            oldPriceLabel.isHidden = false
-
-            discountLabel.text = "  %\(Int(discount)) OFF  "
-            discountLabel.isHidden = false
+        if let badge = viewData.discountBadgeText {
+            discountBadge.isHidden = false
+            discountBadge.text = "  \(badge)  "
         } else {
-            priceLabel.text = String(format: "$%.2f", price)
-            oldPriceLabel.attributedText = nil
-            oldPriceLabel.isHidden = true
-
-            discountLabel.text = nil
-            discountLabel.isHidden = true
+            discountBadge.isHidden = true
+            discountBadge.text = nil
         }
 
-        // Image loading (soft)
+        // Image state
         productImageView.image = nil
         productImageView.alpha = 0
         imagePlaceholderView.alpha = 1
         imageSpinner.startAnimating()
 
-        ImageLoader.shared.load(from: product.thumbnail) { [weak self] image in
+        ImageLoader.shared.load(from: viewData.imageURL) { [weak self] image in
             guard let self else { return }
             self.imageSpinner.stopAnimating()
 
@@ -319,25 +246,13 @@ final class FavoriteCell: UICollectionViewCell {
         }
     }
 
-    // MARK: - Actions (with tap animation)
-
-    @objc private func addTapped() {
-        animateTap(addButton)
-        onAddToCart?()
-    }
+    // MARK: - Actions
 
     @objc private func removeTapped() {
-        animateTap(removeButton)
         onRemove?()
     }
 
-    private func animateTap(_ view: UIView) {
-        UIView.animate(withDuration: 0.10, animations: {
-            view.transform = CGAffineTransform(scaleX: 0.88, y: 0.88)
-        }) { _ in
-            UIView.animate(withDuration: 0.12) {
-                view.transform = .identity
-            }
-        }
+    @objc private func addTapped() {
+        onAddToCart?()
     }
 }
