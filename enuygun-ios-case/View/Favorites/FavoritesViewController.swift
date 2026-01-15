@@ -117,7 +117,7 @@ extension FavoritesViewController: UICollectionViewDataSource {
             guard let self else { return }
             self.animateCellAction(cell)
             self.viewModel.addToCart(at: indexPath.item)
-            self.showToast("Added to Cart")
+            ToastPresenter.show(on: self, message: "Added to Cart")
         }
 
 

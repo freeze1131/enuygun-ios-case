@@ -4,40 +4,70 @@
 //
 //  Created by Ahmet Ozen on 15.01.2026.
 //
-
 import UIKit
 
 final class CheckoutViewController: UIViewController {
 
-    private let cartStore = CartStore.shared
+    private let viewModel = CheckoutViewModel()
+
+    // amount snapshot (success screen için)
+    private var amountAtPayTime: String = "$0.00"
 
     // MARK: - UI
 
     private let scrollView = UIScrollView()
     private let contentView = UIView()
 
-    private let nameField = UITextField()
-    private let phoneField = UITextField()
-    private let addressView = UITextView()
+    private let summaryCard = UIView()
+    private let deliveryCard = UIView()
+    private let paymentCard = UIView()
+    private let addressCard = UIView()
 
-    private let shippingSegment: UISegmentedControl = {
-        let s = UISegmentedControl(items: ["Standard", "Express"])
-        s.selectedSegmentIndex = 0
-        s.translatesAutoresizingMaskIntoConstraints = false
-        return s
+    private let subtotalValueLabel = UILabel()
+    private let deliveryValueLabel = UILabel()
+    private let totalValueLabel = UILabel()
+
+    private let deliverySegment: UISegmentedControl = {
+        let sc = UISegmentedControl(items: ["Normal", "Express"])
+        sc.selectedSegmentIndex = 0
+        sc.translatesAutoresizingMaskIntoConstraints = false
+        return sc
     }()
 
-    private let summaryTitleLabel: UILabel = {
+    private let deliveryHintLabel: UILabel = {
         let l = UILabel()
-        l.text = "Order Summary"
-        l.font = .systemFont(ofSize: 16, weight: .bold)
+        l.font = .systemFont(ofSize: 13, weight: .semibold)
+        l.textColor = .secondaryLabel
+        l.numberOfLines = 2
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
-    private let subtotalLabel = UILabel()
-    private let shippingLabel = UILabel()
-    private let totalLabel = UILabel()
+    private let nameField = UITextField()
+    private let cardNumberField = UITextField()
+    private let expiryField = UITextField()
+    private let cvvField = UITextField()
+
+    private let addressView: UITextView = {
+        let tv = UITextView()
+        tv.font = .systemFont(ofSize: 15)
+        tv.backgroundColor = .systemBackground
+        tv.layer.cornerRadius = 12
+        tv.layer.borderWidth = 1
+        tv.layer.borderColor = UIColor.separator.cgColor
+        tv.textContainerInset = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+        tv.translatesAutoresizingMaskIntoConstraints = false
+        return tv
+    }()
+
+    private let addressPlaceholder: UILabel = {
+        let l = UILabel()
+        l.text = "Address"
+        l.font = .systemFont(ofSize: 15)
+        l.textColor = .placeholderText
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
 
     private let bottomBar: UIView = {
         let v = UIView()
@@ -48,9 +78,9 @@ final class CheckoutViewController: UIViewController {
         return v
     }()
 
-    private let continueButton: UIButton = {
+    private let payButton: UIButton = {
         let b = UIButton(type: .system)
-        b.setTitle("Continue to Payment", for: .normal)
+        b.setTitle("Pay", for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 16, weight: .bold)
         b.backgroundColor = .label
         b.setTitleColor(.systemBackground, for: .normal)
@@ -59,225 +89,368 @@ final class CheckoutViewController: UIViewController {
         return b
     }()
 
-    private let totalInBarLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 14, weight: .semibold)
-        l.textColor = .secondaryLabel
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
+    private let spinner: UIActivityIndicatorView = {
+        let s = UIActivityIndicatorView(style: .medium)
+        s.hidesWhenStopped = true
+        s.translatesAutoresizingMaskIntoConstraints = false
+        return s
     }()
-
-    private let totalInBarValueLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 18, weight: .bold)
-        l.textColor = .label
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
-
-    // MARK: - Pricing
-
-    private var shippingFee: Double {
-        shippingSegment.selectedSegmentIndex == 0 ? 0.0 : 9.99
-    }
-
-    private var total: Double {
-        cartStore.subtotal + shippingFee
-    }
 
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
-        navigationItem.title = "Checkout"
+        title = "Checkout"
 
-        setupLayout()
-        setupFormUI()
-        updateSummary()
+        setupUI()
+        setupInputFormatting()
+        bind()
 
-        shippingSegment.addTarget(self, action: #selector(shippingChanged), for: .valueChanged)
-        continueButton.addTarget(self, action: #selector(continueTapped), for: .touchUpInside)
+        payButton.addTarget(self, action: #selector(payTapped), for: .touchUpInside)
+        deliverySegment.addTarget(self, action: #selector(deliveryChanged), for: .valueChanged)
 
         let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         tap.cancelsTouchesInView = false
         view.addGestureRecognizer(tap)
+
+        // placeholder initial
+        addressPlaceholder.isHidden = !addressView.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    // MARK: - Layout
+    private func bind() {
+        viewModel.onUpdate = { [weak self] in
+            self?.render()
+        }
 
-    private func setupLayout() {
+        viewModel.onPaymentFailure = { [weak self] message in
+            guard let self else { return }
+            self.showError(message)
+        }
+
+        viewModel.onPaymentSuccess = { [weak self] in
+            guard let self else { return }
+            self.showSuccess(amountText: self.amountAtPayTime)
+        }
+
+        render()
+    }
+
+    private func render() {
+        subtotalValueLabel.text = viewModel.subtotalText
+        deliveryValueLabel.text = viewModel.deliveryFeeText
+        totalValueLabel.text = viewModel.totalText
+        deliveryHintLabel.text = "ETA: \(viewModel.deliveryEtaText)"
+
+        switch viewModel.state {
+        case .idle:
+            spinner.stopAnimating()
+            payButton.isEnabled = true
+            payButton.alpha = 1.0
+        case .loading:
+            spinner.startAnimating()
+            payButton.isEnabled = false
+            payButton.alpha = 0.7
+        }
+    }
+
+    // MARK: - Actions
+
+    @objc private func deliveryChanged() {
+        let option: CheckoutViewModel.DeliveryOption = (deliverySegment.selectedSegmentIndex == 1) ? .express : .normal
+        viewModel.setDelivery(option)
+    }
+
+    @objc private func payTapped() {
+        amountAtPayTime = viewModel.amountTextBeforePay()
+
+        let rawCard = cardNumberField.text?.replacingOccurrences(of: " ", with: "")
+        let rawExpiry = expiryField.text // zaten MM/YY
+        let rawCVV = cvvField.text
+
+        viewModel.pay(
+            fullName: nameField.text,
+            cardNumber: rawCard,
+            expiry: rawExpiry,
+            cvv: rawCVV,
+            address: addressView.text
+        )
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
+
+    // MARK: - Navigation
+
+    private func showSuccess(amountText: String) {
+        let vc = PaymentSuccessViewController(
+            amount: amountText,
+            onDone: { [weak self] in
+                guard let self else { return }
+                self.tabBarController?.selectedIndex = 0
+                self.navigationController?.popToRootViewController(animated: false)
+            }
+        )
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func showError(_ message: String) {
+        ToastPresenter.show(
+            on: self,
+            title: "Payment",
+            message: message,
+            primaryAction: .init(title: "OK", style: .default)
+        )
+    }
+
+    // MARK: - Input Formatting Setup
+
+    private func setupInputFormatting() {
+        // delegates
+        cardNumberField.delegate = self
+        expiryField.delegate = self
+        cvvField.delegate = self
+
+        // keyboards
+        cardNumberField.keyboardType = .numberPad
+        expiryField.keyboardType = .numberPad
+        cvvField.keyboardType = .numberPad
+
+        // helpful
+        cardNumberField.textContentType = .creditCardNumber
+        expiryField.textContentType = nil
+        cvvField.textContentType = nil
+
+        // editing changed (paste durumları için de düzeltme)
+        cardNumberField.addTarget(self, action: #selector(cardNumberEditingChanged), for: .editingChanged)
+        expiryField.addTarget(self, action: #selector(expiryEditingChanged), for: .editingChanged)
+        cvvField.addTarget(self, action: #selector(cvvEditingChanged), for: .editingChanged)
+    }
+
+    @objc private func cardNumberEditingChanged() {
+        let digits = digitsOnly(cardNumberField.text).prefix(16)
+        cardNumberField.text = formatCardNumber(String(digits))
+    }
+
+    @objc private func expiryEditingChanged() {
+        let digits = digitsOnly(expiryField.text).prefix(4)
+        expiryField.text = formatExpiry(String(digits)) // MM/YY
+    }
+
+    @objc private func cvvEditingChanged() {
+        let digits = digitsOnly(cvvField.text).prefix(3)
+        cvvField.text = String(digits)
+    }
+
+    // MARK: - UI Setup
+
+    private func setupUI() {
+        // Bottom bar (tek sefer!)
+        view.addSubview(bottomBar)
+        bottomBar.addSubview(payButton)
+        bottomBar.addSubview(spinner)
+
+        // Scroll container
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         contentView.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
 
-        view.addSubview(bottomBar)
-        bottomBar.addSubview(totalInBarLabel)
-        bottomBar.addSubview(totalInBarValueLabel)
-        bottomBar.addSubview(continueButton)
-
         NSLayoutConstraint.activate([
+            // bottom bar
             bottomBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            bottomBar.heightAnchor.constraint(equalToConstant: 92),
+            bottomBar.heightAnchor.constraint(equalToConstant: 96),
 
-            totalInBarLabel.topAnchor.constraint(equalTo: bottomBar.topAnchor, constant: 12),
-            totalInBarLabel.leadingAnchor.constraint(equalTo: bottomBar.leadingAnchor, constant: 16),
+            payButton.topAnchor.constraint(equalTo: bottomBar.topAnchor, constant: 14),
+            payButton.leadingAnchor.constraint(equalTo: bottomBar.leadingAnchor, constant: 16),
+            payButton.trailingAnchor.constraint(equalTo: bottomBar.trailingAnchor, constant: -16),
+            payButton.heightAnchor.constraint(equalToConstant: 52),
 
-            totalInBarValueLabel.topAnchor.constraint(equalTo: totalInBarLabel.bottomAnchor, constant: 2),
-            totalInBarValueLabel.leadingAnchor.constraint(equalTo: totalInBarLabel.leadingAnchor),
+            spinner.centerXAnchor.constraint(equalTo: bottomBar.centerXAnchor),
+            spinner.centerYAnchor.constraint(equalTo: bottomBar.centerYAnchor),
 
-            continueButton.trailingAnchor.constraint(equalTo: bottomBar.trailingAnchor, constant: -16),
-            continueButton.centerYAnchor.constraint(equalTo: bottomBar.centerYAnchor),
-            continueButton.heightAnchor.constraint(equalToConstant: 50),
-            continueButton.widthAnchor.constraint(equalToConstant: 190),
-
+            // scroll view
             scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
 
-            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-
-            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
-        ])
-    }
-
-    private func setupFormUI() {
-        // Section containers
-        let formCard = makeCard()
-        let shippingCard = makeCard()
-        let summaryCard = makeCard()
-
-        contentView.addSubview(formCard)
-        contentView.addSubview(shippingCard)
-        contentView.addSubview(summaryCard)
-
-        formCard.translatesAutoresizingMaskIntoConstraints = false
-        shippingCard.translatesAutoresizingMaskIntoConstraints = false
-        summaryCard.translatesAutoresizingMaskIntoConstraints = false
-
-        NSLayoutConstraint.activate([
-            formCard.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
-            formCard.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            formCard.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-
-            shippingCard.topAnchor.constraint(equalTo: formCard.bottomAnchor, constant: 12),
-            shippingCard.leadingAnchor.constraint(equalTo: formCard.leadingAnchor),
-            shippingCard.trailingAnchor.constraint(equalTo: formCard.trailingAnchor),
-
-            summaryCard.topAnchor.constraint(equalTo: shippingCard.bottomAnchor, constant: 12),
-            summaryCard.leadingAnchor.constraint(equalTo: formCard.leadingAnchor),
-            summaryCard.trailingAnchor.constraint(equalTo: formCard.trailingAnchor),
-            summaryCard.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16)
+            // content view (scrollview içinde düzgün: contentLayoutGuide / frameLayoutGuide)
+            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor)
         ])
 
-        // Form fields
-        let formTitle = makeSectionTitle("Contact & Address")
-        formCard.addSubview(formTitle)
+        // Cards style
+        [summaryCard, deliveryCard, paymentCard, addressCard].forEach { card in
+            card.translatesAutoresizingMaskIntoConstraints = false
+            card.backgroundColor = .systemBackground
+            card.layer.cornerRadius = 16
+            card.layer.borderWidth = 1
+            card.layer.borderColor = UIColor.separator.cgColor
+        }
 
-        configureTextField(nameField, placeholder: "Full name")
-        configureTextField(phoneField, placeholder: "Phone number")
-        phoneField.keyboardType = .phonePad
+        // Summary card
+        let summaryTitle = makeSectionTitle("Order Summary")
+        let rowsStack = UIStackView(arrangedSubviews: [
+            makeRow(title: "Subtotal", valueLabel: subtotalValueLabel),
+            makeRow(title: "Delivery", valueLabel: deliveryValueLabel),
+            makeRow(title: "Total", valueLabel: totalValueLabel, isEmphasis: true)
+        ])
+        rowsStack.axis = .vertical
+        rowsStack.spacing = 10
+        rowsStack.translatesAutoresizingMaskIntoConstraints = false
 
-        addressView.font = .systemFont(ofSize: 15)
-        addressView.backgroundColor = .secondarySystemGroupedBackground
-        addressView.layer.cornerRadius = 12
-        addressView.layer.borderWidth = 1
-        addressView.layer.borderColor = UIColor.separator.cgColor
-        addressView.textContainerInset = UIEdgeInsets(top: 10, left: 8, bottom: 10, right: 8)
-        addressView.text = "Address"
-        addressView.textColor = .secondaryLabel
+        summaryCard.addSubview(summaryTitle)
+        summaryCard.addSubview(rowsStack)
 
+        // Delivery card
+        let deliveryTitle = makeSectionTitle("Delivery")
+        deliveryCard.addSubview(deliveryTitle)
+        deliveryCard.addSubview(deliverySegment)
+        deliveryCard.addSubview(deliveryHintLabel)
+
+        // Payment card
+        let paymentTitle = makeSectionTitle("Payment")
+        configureField(nameField, placeholder: "Full Name")
+        configureField(cardNumberField, placeholder: "Card Number")
+        configureField(expiryField, placeholder: "MM/YY")
+        configureField(cvvField, placeholder: "CVV")
+
+        cvvField.isSecureTextEntry = true
+
+        let row2 = UIStackView(arrangedSubviews: [expiryField, cvvField])
+        row2.axis = .horizontal
+        row2.spacing = 12
+        row2.distribution = .fillEqually
+        row2.translatesAutoresizingMaskIntoConstraints = false
+
+        paymentCard.addSubview(paymentTitle)
+        paymentCard.addSubview(nameField)
+        paymentCard.addSubview(cardNumberField)
+        paymentCard.addSubview(row2)
+
+        // Address card
+        let addressTitle = makeSectionTitle("Address")
+        addressCard.addSubview(addressTitle)
+        addressCard.addSubview(addressView)
+        addressCard.addSubview(addressPlaceholder)
         addressView.delegate = self
 
-        let formStack = UIStackView(arrangedSubviews: [nameField, phoneField, addressView])
-        formStack.axis = .vertical
-        formStack.spacing = 10
-        formStack.translatesAutoresizingMaskIntoConstraints = false
-        formCard.addSubview(formStack)
+        // Main stack
+        let mainStack = UIStackView(arrangedSubviews: [summaryCard, deliveryCard, paymentCard, addressCard])
+        mainStack.axis = .vertical
+        mainStack.spacing = 14
+        mainStack.translatesAutoresizingMaskIntoConstraints = false
+
+        contentView.addSubview(mainStack)
 
         NSLayoutConstraint.activate([
-            formTitle.topAnchor.constraint(equalTo: formCard.topAnchor, constant: 14),
-            formTitle.leadingAnchor.constraint(equalTo: formCard.leadingAnchor, constant: 14),
-            formTitle.trailingAnchor.constraint(equalTo: formCard.trailingAnchor, constant: -14),
+            mainStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
+            mainStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            mainStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            mainStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16),
 
-            formStack.topAnchor.constraint(equalTo: formTitle.bottomAnchor, constant: 12),
-            formStack.leadingAnchor.constraint(equalTo: formCard.leadingAnchor, constant: 14),
-            formStack.trailingAnchor.constraint(equalTo: formCard.trailingAnchor, constant: -14),
-            formStack.bottomAnchor.constraint(equalTo: formCard.bottomAnchor, constant: -14),
+            // Summary layout
+            summaryTitle.topAnchor.constraint(equalTo: summaryCard.topAnchor, constant: 14),
+            summaryTitle.leadingAnchor.constraint(equalTo: summaryCard.leadingAnchor, constant: 14),
+            summaryTitle.trailingAnchor.constraint(equalTo: summaryCard.trailingAnchor, constant: -14),
 
+            rowsStack.topAnchor.constraint(equalTo: summaryTitle.bottomAnchor, constant: 12),
+            rowsStack.leadingAnchor.constraint(equalTo: summaryCard.leadingAnchor, constant: 14),
+            rowsStack.trailingAnchor.constraint(equalTo: summaryCard.trailingAnchor, constant: -14),
+            rowsStack.bottomAnchor.constraint(equalTo: summaryCard.bottomAnchor, constant: -14),
+
+            // Delivery layout
+            deliveryTitle.topAnchor.constraint(equalTo: deliveryCard.topAnchor, constant: 14),
+            deliveryTitle.leadingAnchor.constraint(equalTo: deliveryCard.leadingAnchor, constant: 14),
+            deliveryTitle.trailingAnchor.constraint(equalTo: deliveryCard.trailingAnchor, constant: -14),
+
+            deliverySegment.topAnchor.constraint(equalTo: deliveryTitle.bottomAnchor, constant: 12),
+            deliverySegment.leadingAnchor.constraint(equalTo: deliveryCard.leadingAnchor, constant: 14),
+            deliverySegment.trailingAnchor.constraint(equalTo: deliveryCard.trailingAnchor, constant: -14),
+
+            deliveryHintLabel.topAnchor.constraint(equalTo: deliverySegment.bottomAnchor, constant: 10),
+            deliveryHintLabel.leadingAnchor.constraint(equalTo: deliveryCard.leadingAnchor, constant: 14),
+            deliveryHintLabel.trailingAnchor.constraint(equalTo: deliveryCard.trailingAnchor, constant: -14),
+            deliveryHintLabel.bottomAnchor.constraint(equalTo: deliveryCard.bottomAnchor, constant: -14),
+
+            // Payment layout
+            paymentTitle.topAnchor.constraint(equalTo: paymentCard.topAnchor, constant: 14),
+            paymentTitle.leadingAnchor.constraint(equalTo: paymentCard.leadingAnchor, constant: 14),
+            paymentTitle.trailingAnchor.constraint(equalTo: paymentCard.trailingAnchor, constant: -14),
+
+            nameField.topAnchor.constraint(equalTo: paymentTitle.bottomAnchor, constant: 12),
+            nameField.leadingAnchor.constraint(equalTo: paymentCard.leadingAnchor, constant: 14),
+            nameField.trailingAnchor.constraint(equalTo: paymentCard.trailingAnchor, constant: -14),
             nameField.heightAnchor.constraint(equalToConstant: 44),
-            phoneField.heightAnchor.constraint(equalToConstant: 44),
-            addressView.heightAnchor.constraint(equalToConstant: 96)
-        ])
 
-        // Shipping
-        let shippingTitle = makeSectionTitle("Shipping")
-        shippingCard.addSubview(shippingTitle)
-        shippingCard.addSubview(shippingSegment)
+            cardNumberField.topAnchor.constraint(equalTo: nameField.bottomAnchor, constant: 10),
+            cardNumberField.leadingAnchor.constraint(equalTo: paymentCard.leadingAnchor, constant: 14),
+            cardNumberField.trailingAnchor.constraint(equalTo: paymentCard.trailingAnchor, constant: -14),
+            cardNumberField.heightAnchor.constraint(equalToConstant: 44),
 
-        NSLayoutConstraint.activate([
-            shippingTitle.topAnchor.constraint(equalTo: shippingCard.topAnchor, constant: 14),
-            shippingTitle.leadingAnchor.constraint(equalTo: shippingCard.leadingAnchor, constant: 14),
-            shippingTitle.trailingAnchor.constraint(equalTo: shippingCard.trailingAnchor, constant: -14),
+            row2.topAnchor.constraint(equalTo: cardNumberField.bottomAnchor, constant: 10),
+            row2.leadingAnchor.constraint(equalTo: paymentCard.leadingAnchor, constant: 14),
+            row2.trailingAnchor.constraint(equalTo: paymentCard.trailingAnchor, constant: -14),
 
-            shippingSegment.topAnchor.constraint(equalTo: shippingTitle.bottomAnchor, constant: 12),
-            shippingSegment.leadingAnchor.constraint(equalTo: shippingCard.leadingAnchor, constant: 14),
-            shippingSegment.trailingAnchor.constraint(equalTo: shippingCard.trailingAnchor, constant: -14),
-            shippingSegment.bottomAnchor.constraint(equalTo: shippingCard.bottomAnchor, constant: -14)
-        ])
+            expiryField.heightAnchor.constraint(equalToConstant: 44),
+            cvvField.heightAnchor.constraint(equalToConstant: 44),
 
-        // Summary
-        summaryCard.addSubview(summaryTitleLabel)
-        configureSummaryLabel(subtotalLabel)
-        configureSummaryLabel(shippingLabel)
-        configureSummaryLabel(totalLabel, bold: true)
+            row2.bottomAnchor.constraint(equalTo: paymentCard.bottomAnchor, constant: -14),
 
-        let summaryStack = UIStackView(arrangedSubviews: [subtotalLabel, shippingLabel, totalLabel])
-        summaryStack.axis = .vertical
-        summaryStack.spacing = 8
-        summaryStack.translatesAutoresizingMaskIntoConstraints = false
-        summaryCard.addSubview(summaryStack)
+            // Address layout
+            addressTitle.topAnchor.constraint(equalTo: addressCard.topAnchor, constant: 14),
+            addressTitle.leadingAnchor.constraint(equalTo: addressCard.leadingAnchor, constant: 14),
+            addressTitle.trailingAnchor.constraint(equalTo: addressCard.trailingAnchor, constant: -14),
 
-        NSLayoutConstraint.activate([
-            summaryTitleLabel.topAnchor.constraint(equalTo: summaryCard.topAnchor, constant: 14),
-            summaryTitleLabel.leadingAnchor.constraint(equalTo: summaryCard.leadingAnchor, constant: 14),
+            addressView.topAnchor.constraint(equalTo: addressTitle.bottomAnchor, constant: 12),
+            addressView.leadingAnchor.constraint(equalTo: addressCard.leadingAnchor, constant: 14),
+            addressView.trailingAnchor.constraint(equalTo: addressCard.trailingAnchor, constant: -14),
+            addressView.heightAnchor.constraint(equalToConstant: 120),
+            addressView.bottomAnchor.constraint(equalTo: addressCard.bottomAnchor, constant: -14),
 
-            summaryStack.topAnchor.constraint(equalTo: summaryTitleLabel.bottomAnchor, constant: 12),
-            summaryStack.leadingAnchor.constraint(equalTo: summaryCard.leadingAnchor, constant: 14),
-            summaryStack.trailingAnchor.constraint(equalTo: summaryCard.trailingAnchor, constant: -14),
-            summaryStack.bottomAnchor.constraint(equalTo: summaryCard.bottomAnchor, constant: -14)
+            addressPlaceholder.topAnchor.constraint(equalTo: addressView.topAnchor, constant: 10),
+            addressPlaceholder.leadingAnchor.constraint(equalTo: addressView.leadingAnchor, constant: 14)
         ])
     }
 
-    // MARK: - Helpers
-
-    private func makeCard() -> UIView {
-        let v = UIView()
-        v.backgroundColor = .systemBackground
-        v.layer.cornerRadius = 16
-        v.layer.borderWidth = 1
-        v.layer.borderColor = UIColor.separator.cgColor
-        v.translatesAutoresizingMaskIntoConstraints = false
-        return v
-    }
+    // MARK: - UI helpers
 
     private func makeSectionTitle(_ text: String) -> UILabel {
         let l = UILabel()
         l.text = text
         l.font = .systemFont(ofSize: 15, weight: .bold)
+        l.textColor = .label
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }
 
-    private func configureTextField(_ tf: UITextField, placeholder: String) {
+    private func makeRow(title: String, valueLabel: UILabel, isEmphasis: Bool = false) -> UIView {
+        let left = UILabel()
+        left.text = title
+        left.font = .systemFont(ofSize: 14, weight: isEmphasis ? .bold : .semibold)
+        left.textColor = .secondaryLabel
+
+        valueLabel.font = .systemFont(ofSize: 14, weight: isEmphasis ? .bold : .semibold)
+        valueLabel.textColor = .label
+        valueLabel.textAlignment = .right
+
+        let h = UIStackView(arrangedSubviews: [left, valueLabel])
+        h.axis = .horizontal
+        h.alignment = .center
+        h.spacing = 10
+        return h
+    }
+
+    private func configureField(_ tf: UITextField, placeholder: String) {
+        tf.translatesAutoresizingMaskIntoConstraints = false
         tf.placeholder = placeholder
         tf.backgroundColor = .secondarySystemGroupedBackground
         tf.layer.cornerRadius = 12
@@ -289,79 +462,82 @@ final class CheckoutViewController: UIViewController {
         tf.autocapitalizationType = .words
     }
 
-    private func configureSummaryLabel(_ label: UILabel, bold: Bool = false) {
-        label.font = bold ? .systemFont(ofSize: 16, weight: .bold) : .systemFont(ofSize: 15, weight: .semibold)
-        label.textColor = bold ? .label : .secondaryLabel
-        label.translatesAutoresizingMaskIntoConstraints = false
+    // MARK: - Formatting helpers
+
+    private func digitsOnly(_ text: String?) -> String {
+        let s = text ?? ""
+        return s.filter { $0.isNumber }
     }
 
-    private func updateSummary() {
-        subtotalLabel.text = String(format: "Subtotal: $%.2f", cartStore.subtotal)
-        shippingLabel.text = String(format: "Shipping: $%.2f", shippingFee)
-        totalLabel.text = String(format: "Total: $%.2f", total)
-
-        totalInBarLabel.text = "Total"
-        totalInBarValueLabel.text = String(format: "$%.2f", total)
+    private func formatCardNumber(_ digits: String) -> String {
+        // "4242424242424242" -> "4242 4242 4242 4242"
+        var out = ""
+        for (i, ch) in digits.enumerated() {
+            if i != 0 && i % 4 == 0 { out.append(" ") }
+            out.append(ch)
+        }
+        return out
     }
 
-    // MARK: - Actions
-
-    @objc private func shippingChanged() {
-        updateSummary()
-    }
-
-    @objc private func continueTapped() {
-        // basic validation
-        let name = (nameField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let phone = (phoneField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let address = (addressView.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-
-        let addressIsPlaceholder = (addressView.textColor == .secondaryLabel)
-
-        guard !name.isEmpty else { showError("Please enter your full name."); return }
-        guard !phone.isEmpty else { showError("Please enter your phone number."); return }
-        guard !address.isEmpty, !addressIsPlaceholder else { showError("Please enter your address."); return }
-
-        let paymentVC = PaymentViewController(
-            totalAmount: total,
-            onSuccess: { [weak self] in
-                // Payment success: clear cart
-                CartStore.shared.clear()
-                self?.navigationController?.popToRootViewController(animated: true)
-                self?.tabBarController?.selectedIndex = 0
-            }
-        )
-        navigationController?.pushViewController(paymentVC, animated: true)
-    }
-
-    private func showError(_ message: String) {
-        ToastPresenter.show(
-            on: self,
-            title: "Missing Info",
-            message: message,
-            primaryAction: .init(title: "OK", style: .default)
-        )
-    }
-
-
-    @objc private func dismissKeyboard() {
-        view.endEditing(true)
+    private func formatExpiry(_ digits: String) -> String {
+        // "0127" -> "01/27", "0" -> "0", "01" -> "01", "012" -> "01/2"
+        let d = Array(digits)
+        if d.count <= 2 {
+            return String(d)
+        } else {
+            let mm = String(d.prefix(2))
+            let yy = String(d.dropFirst(2))
+            return "\(mm)/\(yy)"
+        }
     }
 }
 
+// MARK: - UITextViewDelegate (Address placeholder)
 extension CheckoutViewController: UITextViewDelegate {
+    func textViewDidChange(_ textView: UITextView) {
+        addressPlaceholder.isHidden = !textView.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     func textViewDidBeginEditing(_ textView: UITextView) {
-        if textView.textColor == .secondaryLabel {
-            textView.text = ""
-            textView.textColor = .label
-        }
+        addressPlaceholder.isHidden = true
     }
 
     func textViewDidEndEditing(_ textView: UITextView) {
-        let t = textView.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if t.isEmpty {
-            textView.text = "Address"
-            textView.textColor = .secondaryLabel
+        addressPlaceholder.isHidden = !textView.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
+// MARK: - UITextFieldDelegate (Card / Expiry / CVV restrictions)
+extension CheckoutViewController: UITextFieldDelegate {
+
+    func textField(_ textField: UITextField,
+                   shouldChangeCharactersIn range: NSRange,
+                   replacementString string: String) -> Bool {
+
+        // backspace / normal behavior for non-number? -> biz sadece digit istiyoruz
+        if string.isEmpty { return true }
+
+        // sadece rakam
+        guard string.allSatisfy({ $0.isNumber }) else { return false }
+
+        if textField === cardNumberField {
+            // max 16 digit
+            let currentDigits = digitsOnly(textField.text)
+            return currentDigits.count < 16
         }
+
+        if textField === expiryField {
+            // max 4 digit (MMYY) -> UI'da MM/YY
+            let currentDigits = digitsOnly(textField.text)
+            return currentDigits.count < 4
+        }
+
+        if textField === cvvField {
+            // max 3 digit
+            let currentDigits = digitsOnly(textField.text)
+            return currentDigits.count < 3
+        }
+
+        return true
     }
 }

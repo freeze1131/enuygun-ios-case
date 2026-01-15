@@ -248,7 +248,7 @@ final class PaymentViewController: UIViewController {
 
                 // push success screen
                 let successVC = PaymentSuccessViewController(
-                    amount: self.totalAmount,
+                    amount: String(self.totalAmount),
                     onDone: { [weak self] in
                         self?.onSuccess()
                     }

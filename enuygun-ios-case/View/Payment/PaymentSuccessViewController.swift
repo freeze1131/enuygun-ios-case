@@ -9,7 +9,7 @@ import UIKit
 
 final class PaymentSuccessViewController: UIViewController {
 
-    private let amount: Double
+    private let amount: String
     private let onDone: () -> Void
 
     private let iconView: UIImageView = {
@@ -49,7 +49,7 @@ final class PaymentSuccessViewController: UIViewController {
         return b
     }()
 
-    init(amount: Double, onDone: @escaping () -> Void) {
+    init(amount: String, onDone: @escaping () -> Void) {
         self.amount = amount
         self.onDone = onDone
         super.init(nibName: nil, bundle: nil)
@@ -63,7 +63,7 @@ final class PaymentSuccessViewController: UIViewController {
         navigationItem.hidesBackButton = true
         navigationItem.title = "Success"
 
-        subtitleLabel.text = "Your payment of \(String(format: "$%.2f", amount)) has been completed."
+        subtitleLabel.text = "Your payment of \(amount) has been completed."
 
         setupUI()
         doneButton.addTarget(self, action: #selector(doneTapped), for: .touchUpInside)
