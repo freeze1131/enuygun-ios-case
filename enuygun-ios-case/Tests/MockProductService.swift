@@ -22,5 +22,26 @@ final class MockProductService: ProductServiceProtocol {
             fatalError("MockProductService.result must be set before calling fetchProducts")
         }
     }
+    
+    var searchResult: Result<ProductResponse, Error>?
+
+    func searchProducts(query: String, skip: Int, limit: Int) async throws -> ProductResponse {
+        switch searchResult {
+        case .success(let response):
+            return response
+        case .failure(let error):
+            throw error
+        case .none:
+            // default fallback: use `result` if set
+            if let result {
+                switch result {
+                case .success(let r): return r
+                case .failure(let e): throw e
+                }
+            }
+            fatalError("MockProductService.searchResult must be set before calling searchProducts")
+        }
+    }
+
 }
 

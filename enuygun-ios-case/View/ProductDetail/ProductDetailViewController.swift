@@ -16,7 +16,6 @@ final class ProductDetailViewController: UIViewController {
         super.init(nibName: nil, bundle: nil)
     }
 
-
     // Convenience init (istersen eski çağrıları bozmamak için)
     convenience init(product: Product) {
         let vm = ProductDetailViewModel(product: product)
@@ -112,11 +111,17 @@ final class ProductDetailViewController: UIViewController {
 
     private let addToCartButton: UIButton = {
         let b = UIButton(type: .system)
-        b.setTitle("Add to Cart", for: .normal)
-        b.titleLabel?.font = .systemFont(ofSize: 16, weight: .bold)
+        b.setTitle(" Add to Cart", for: .normal)
+        b.setImage(UIImage(systemName: "cart.badge.plus"), for: .normal)
+
+        b.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+
         b.backgroundColor = .label
         b.setTitleColor(.systemBackground, for: .normal)
-        b.layer.cornerRadius = 14
+        b.tintColor = .systemBackground
+
+        b.layer.cornerRadius = 12
+
         b.translatesAutoresizingMaskIntoConstraints = false
         return b
     }()
@@ -150,13 +155,12 @@ final class ProductDetailViewController: UIViewController {
             bottomBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            bottomBar.heightAnchor.constraint(equalToConstant: 92),
+            bottomBar.heightAnchor.constraint(equalToConstant: 68),
 
             addToCartButton.leadingAnchor.constraint(equalTo: bottomBar.leadingAnchor, constant: 16),
             addToCartButton.trailingAnchor.constraint(equalTo: bottomBar.trailingAnchor, constant: -16),
-            addToCartButton.heightAnchor.constraint(equalToConstant: 48),
-            addToCartButton.topAnchor.constraint(equalTo: bottomBar.topAnchor, constant: 12),
-            addToCartButton.bottomAnchor.constraint(equalTo: bottomBar.bottomAnchor, constant: -12),
+            addToCartButton.heightAnchor.constraint(equalToConstant: 40),
+            addToCartButton.centerYAnchor.constraint(equalTo: bottomBar.centerYAnchor),
 
             scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),

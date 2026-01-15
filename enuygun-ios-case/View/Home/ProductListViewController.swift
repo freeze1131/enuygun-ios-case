@@ -10,6 +10,9 @@ final class ProductListViewController: UIViewController {
 
     private let viewModel: ProductListViewModel
     private let container: AppContainerProtocol
+    
+    private var searchWorkItem: DispatchWorkItem?
+
 
        init(viewModel: ProductListViewModel, container: AppContainerProtocol) {
            self.viewModel = viewModel
@@ -200,8 +203,16 @@ final class ProductListViewController: UIViewController {
     }
 
     @objc private func searchChanged() {
-        viewModel.setSearchQuery(searchField.text ?? "")
+        let text = searchField.text ?? ""
+
+        searchWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            self?.viewModel.setSearchQuery(text)
+        }
+        searchWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: work)
     }
+
 
     @objc private func filterTapped() {
         let sheet = UIAlertController(title: "Filter", message: nil, preferredStyle: .actionSheet)

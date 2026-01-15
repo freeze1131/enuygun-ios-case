@@ -28,47 +28,46 @@ final class ProductListViewModel {
         }
     }
 
-    // MARK: - Dependencies
+    private enum Mode: Equatable {
+        case browse
+        case search(query: String)
+    }
+
     private let service: ProductServiceProtocol
 
-    // MARK: - Output
-    var onUpdate: (() -> Void)?
-
-    // MARK: - API totals
+    // API totals
     private(set) var totalFromAPI: Int = 0
 
-    // MARK: - Pagination state
+    // Pagination state
     private var loadedCount: Int = 0
     private var isLoadingMore: Bool = false
     private var canLoadMore: Bool = true
 
-    // MARK: - Data
+    // Raw data from API for current mode
     private(set) var allProducts: [Product] = []
 
+    // Rendered (after filter/sort)
     private(set) var products: [Product] = [] {
         didSet { onUpdate?() }
     }
 
-    // MARK: - Filters
+    var onUpdate: (() -> Void)?
+
+    // Inputs
     private var searchQuery: String = ""
     private var selectedCategory: String? = nil // nil = All
     private var sortOption: SortOption = .relevance
 
-    // MARK: - Init
+    private var mode: Mode = .browse
+
     init(service: ProductServiceProtocol = ProductService()) {
         self.service = service
     }
 
-    // MARK: - Initial Load (resets pagination)
+    // MARK: - Initial Load
     func loadProducts() async {
-        loadedCount = 0
-        isLoadingMore = false
-        canLoadMore = true
-
-        totalFromAPI = 0
-        allProducts = []
-        products = []
-
+        mode = .browse
+        resetPagination()
         await loadMoreIfNeeded(force: true)
     }
 
@@ -81,17 +80,21 @@ final class ProductListViewModel {
         defer { isLoadingMore = false }
 
         do {
-            let response = try await service.fetchProducts(skip: loadedCount, limit: APIConstants.pageLimit)
-            totalFromAPI = response.total
+            let response: ProductResponse
+            switch mode {
+            case .browse:
+                response = try await service.fetchProducts(skip: loadedCount, limit: APIConstants.pageLimit)
+            case .search(let q):
+                response = try await service.searchProducts(query: q, skip: loadedCount, limit: APIConstants.pageLimit)
+            }
 
+            totalFromAPI = response.total
             allProducts.append(contentsOf: response.products)
             loadedCount = allProducts.count
-
             canLoadMore = loadedCount < totalFromAPI
 
             apply()
         } catch {
-            // şimdilik log; sonraki adımda state/error UI yapacağız
             print("Pagination error:", error)
         }
     }
@@ -101,10 +104,30 @@ final class ProductListViewModel {
         return currentIndex >= threshold
     }
 
-    // MARK: - Search / Filter / Sort inputs
+    // MARK: - Search / Filter / Sort
     func setSearchQuery(_ query: String) {
-        searchQuery = query
-        apply()
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        searchQuery = trimmed
+
+        // IMPORTANT: if query changes meaningfully, restart from page 0 for search.
+        if trimmed.isEmpty {
+            if mode != .browse {
+                // go back to browse mode
+                mode = .browse
+                Task { await reloadForCurrentMode() }
+            } else {
+                apply() // local changes (e.g. sort/filter) still apply
+            }
+        } else {
+            let newMode: Mode = .search(query: trimmed)
+            if mode != newMode {
+                mode = newMode
+                Task { await reloadForCurrentMode() }
+            } else {
+                // same query (e.g. typing spaces), still apply local ops
+                apply()
+            }
+        }
     }
 
     func setCategory(_ category: String?) {
@@ -121,26 +144,39 @@ final class ProductListViewModel {
         Array(Set(allProducts.map { $0.category })).sorted()
     }
 
-    // MARK: - Apply pipeline
+    // MARK: - Current UI State
+    func currentCategory() -> String? { selectedCategory }
+    func currentSortOption() -> SortOption { sortOption }
+
+    // MARK: - Internal
+    private func reloadForCurrentMode() async {
+        resetPagination()
+        await loadMoreIfNeeded(force: true)
+    }
+
+    private func resetPagination() {
+        loadedCount = 0
+        isLoadingMore = false
+        canLoadMore = true
+
+        totalFromAPI = 0
+        allProducts = []
+        products = []
+    }
+
     private func apply() {
         var result = allProducts
 
+        // Filter: category (local)
         if let category = selectedCategory, !category.isEmpty {
             result = result.filter { $0.category == category }
         }
 
-        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if !q.isEmpty {
-            result = result.filter { p in
-                let haystack = [
-                    p.title,
-                    p.description,
-                    p.brand ?? ""
-                ].joined(separator: " ").lowercased()
-                return haystack.contains(q)
-            }
-        }
+        // Search: if we are in browse mode and user typed nothing, no local search.
+        // If we are in search mode, server already filtered. Still allow local contains for extra fuzz? (optional)
+        // Here: keep it simple; don't double filter.
 
+        // Sort (local)
         switch sortOption {
         case .relevance:
             break
@@ -156,8 +192,4 @@ final class ProductListViewModel {
 
         products = result
     }
-
-    // MARK: - Current selections
-    func currentCategory() -> String? { selectedCategory }
-    func currentSortOption() -> SortOption { sortOption }
 }
