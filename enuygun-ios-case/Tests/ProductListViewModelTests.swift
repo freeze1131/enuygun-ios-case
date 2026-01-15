@@ -11,133 +11,135 @@ import XCTest
 @MainActor
 final class ProductListViewModelTests: XCTestCase {
 
-    // MARK: - Helpers
+    private var service: MockProductService!
+    private var sut: ProductListViewModel!
 
-    private func makeProduct(
-        id: Int,
-        title: String,
-        price: Double,
-        rating: Double = 4.0,
-        discount: Double? = nil,
-        category: String = "phones",
-        brand: String? = nil
-    ) -> Product {
-        Product(
-            id: id,
-            title: title,
-            description: "desc",
-            category: category,
-            price: price,
-            discountPercentage: discount,
-            rating: rating,
-            stock: 10,
-            brand: brand,
-            thumbnail: "https://example.com/img.png",
-            images: []
-        )
+    override func setUp() {
+        super.setUp()
+
+        service = MockProductService()
+        service.products = [
+            Product(
+                id: 1,
+                title: "iPhone 15",
+                description: "Apple smartphone",
+                category: "phones",
+                price: 1200,
+                discountPercentage: 10,
+                rating: 4.8,
+                stock: 5,
+                brand: "Apple",
+                thumbnail: "",
+                images: []
+            ),
+            Product(
+                id: 2,
+                title: "Samsung Galaxy",
+                description: "Android phone",
+                category: "phones",
+                price: 900,
+                discountPercentage: nil,
+                rating: 4.3,
+                stock: 10,
+                brand: "Samsung",
+                thumbnail: "",
+                images: []
+            ),
+            Product(
+                id: 3,
+                title: "MacBook Pro",
+                description: "Apple laptop",
+                category: "laptops",
+                price: 2500,
+                discountPercentage: 15,
+                rating: 4.9,
+                stock: 3,
+                brand: "Apple",
+                thumbnail: "",
+                images: []
+            )
+        ]
+
+        sut = ProductListViewModel(service: service)
+    }
+
+    override func tearDown() {
+        sut = nil
+        service = nil
+        super.tearDown()
     }
 
     // MARK: - Tests
 
-    func test_loadProducts_setsProductsAndTotal() async {
-        // given
-        let mockService = MockProductService()
-        mockService.result = .success(
-            ProductResponse(
-                products: [
-                    makeProduct(id: 1, title: "iPhone", price: 1000)
-                ],
-                total: 1,
-                skip: 0,
-                limit: 30
-            )
-        )
-
-        let sut = ProductListViewModel(service: mockService)
-
-        // when
+    func test_loadProducts_fetchesInitialProducts() async {
         await sut.loadProducts()
 
-        // then
-        XCTAssertEqual(sut.totalFromAPI, 1)
-        XCTAssertEqual(sut.products.count, 1)
-        XCTAssertEqual(sut.products.first?.title, "iPhone")
+        XCTAssertEqual(sut.products.count, 3)
+        XCTAssertEqual(sut.totalFromAPI, 3)
     }
 
-    func test_search_filtersProductsByTitle() async {
-        // given
-        let mockService = MockProductService()
-        mockService.result = .success(
-            ProductResponse(
-                products: [
-                    makeProduct(id: 1, title: "iPhone", price: 1000),
-                    makeProduct(id: 2, title: "Samsung Galaxy", price: 900)
-                ],
-                total: 2,
-                skip: 0,
-                limit: 30
-            )
-        )
-
-        let sut = ProductListViewModel(service: mockService)
+    func test_searchFiltersProducts() async {
         await sut.loadProducts()
 
-        // when
-        sut.setSearchQuery("iphone")
-
-        // then
-        XCTAssertEqual(sut.products.count, 1)
-        XCTAssertEqual(sut.products.first?.title, "iPhone")
+        sut.setSearchQuery("apple")
+        
+        await Task.yield()
+        XCTAssertEqual(sut.products.count, 2)
+        XCTAssertTrue(sut.products.allSatisfy {
+            $0.brand == "Apple"
+        })
     }
 
-    func test_sort_priceLowToHigh_sortsCorrectly() async {
-        // given
-        let mockService = MockProductService()
-        mockService.result = .success(
-            ProductResponse(
-                products: [
-                    makeProduct(id: 1, title: "Expensive", price: 2000),
-                    makeProduct(id: 2, title: "Cheap", price: 500)
-                ],
-                total: 2,
-                skip: 0,
-                limit: 30
-            )
-        )
-
-        let sut = ProductListViewModel(service: mockService)
+    func test_filterByCategory() async {
         await sut.loadProducts()
 
-        // when
+        sut.setCategory("phones")
+
+        XCTAssertEqual(sut.products.count, 2)
+        XCTAssertTrue(sut.products.allSatisfy {
+            $0.category == "phones"
+        })
+    }
+
+    func test_sortByPriceLowToHigh() async {
+        await sut.loadProducts()
+
         sut.setSortOption(.priceLowToHigh)
 
-        // then
-        XCTAssertEqual(sut.products.first?.title, "Cheap")
-        XCTAssertEqual(sut.products.last?.title, "Expensive")
+        let prices = sut.products.map { $0.price }
+        XCTAssertEqual(prices, prices.sorted())
     }
 
-    func test_sort_discountHighToLow_sortsCorrectly() async {
-        // given
-        let mockService = MockProductService()
-        mockService.result = .success(
-            ProductResponse(
-                products: [
-                    makeProduct(id: 1, title: "Low Discount", price: 1000, discount: 5),
-                    makeProduct(id: 2, title: "High Discount", price: 1000, discount: 30)
-                ],
-                total: 2,
-                skip: 0,
-                limit: 30
-            )
-        )
-
-        let sut = ProductListViewModel(service: mockService)
+    func test_sortByRatingHighToLow() async {
         await sut.loadProducts()
 
-        // when
-        sut.setSortOption(.discountHighToLow)
+        sut.setSortOption(.ratingHighToLow)
 
-        // then
-        XCTAssertEqual(sut.products.first?.title, "High Discount")
+        let ratings = sut.products.map { $0.rating }
+        XCTAssertEqual(ratings, ratings.sorted(by: >))
+    }
+
+    func test_paginationLoadsMore() async {
+        service.products = (1...50).map {
+            Product(
+                id: $0,
+                title: "Product \($0)",
+                description: "Desc",
+                category: "test",
+                price: Double($0),
+                discountPercentage: nil,
+                rating: 4.0,
+                stock: 10,
+                brand: nil,
+                thumbnail: "",
+                images: []
+            )
+        }
+
+        await sut.loadProducts()
+        XCTAssertEqual(sut.products.count, APIConstants.pageLimit)
+
+        await sut.loadMoreIfNeeded()
+        XCTAssertTrue(sut.products.count > APIConstants.pageLimit)
     }
 }

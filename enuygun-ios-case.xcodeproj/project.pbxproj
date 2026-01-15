@@ -25,6 +25,9 @@
 		94AA079E2F198D7E00AC9A59 /* Exceptions for "enuygun-ios-case" folder in "enuygun-ios-case" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Tests/CartViewModelTests.swift,
+				Tests/FavoritesViewModelTests.swift,
+				Tests/MockProductService.swift,
 				Tests/ProductListViewModelTests.swift,
 			);
 			target = 9406A1762F191EF6007CD771 /* enuygun-ios-case */;
@@ -32,6 +35,9 @@
 		94AA07A02F198D8100AC9A59 /* Exceptions for "enuygun-ios-case" folder in "enuygun-ios-caseTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Tests/CartViewModelTests.swift,
+				Tests/FavoritesViewModelTests.swift,
+				Tests/MockProductService.swift,
 				Tests/ProductListViewModelTests.swift,
 			);
 			target = 94AA07942F198D7900AC9A59 /* enuygun-ios-caseTests */;

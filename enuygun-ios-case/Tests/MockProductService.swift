@@ -10,38 +10,46 @@ import Foundation
 
 final class MockProductService: ProductServiceProtocol {
 
-    var result: Result<ProductResponse, Error>!
+    var products: [Product] = []
+    var error: Error?
 
+    // MARK: - Fetch (normal list)
     func fetchProducts(skip: Int, limit: Int) async throws -> ProductResponse {
-        switch result {
-        case .success(let response):
-            return response
-        case .failure(let error):
-            throw error
-        case .none:
-            fatalError("MockProductService.result must be set before calling fetchProducts")
-        }
-    }
-    
-    var searchResult: Result<ProductResponse, Error>?
+        if let error { throw error }
 
+        let slice = Array(products.dropFirst(skip).prefix(limit))
+        return ProductResponse(
+            products: slice,
+            total: products.count,
+            skip: skip,
+            limit: limit
+        )
+    }
+
+    // MARK: - Search
     func searchProducts(query: String, skip: Int, limit: Int) async throws -> ProductResponse {
-        switch searchResult {
-        case .success(let response):
-            return response
-        case .failure(let error):
-            throw error
-        case .none:
-            // default fallback: use `result` if set
-            if let result {
-                switch result {
-                case .success(let r): return r
-                case .failure(let e): throw e
-                }
-            }
-            fatalError("MockProductService.searchResult must be set before calling searchProducts")
+        if let error { throw error }
+
+        let q = query.lowercased()
+
+        let filtered = products.filter { p in
+            let haystack = [
+                p.title,
+                p.description,
+                p.brand ?? ""
+            ]
+            .joined(separator: " ")
+            .lowercased()
+
+            return haystack.contains(q)
         }
+
+        let slice = Array(filtered.dropFirst(skip).prefix(limit))
+        return ProductResponse(
+            products: slice,
+            total: filtered.count,
+            skip: skip,
+            limit: limit
+        )
     }
-
 }
-
