@@ -12,6 +12,7 @@ final class MainTabBarController: UITabBarController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupTabs()
+        configureTabBarAppearance()
     }
 
     private func setupTabs() {
@@ -38,5 +39,23 @@ final class MainTabBarController: UITabBarController {
 
         viewControllers = [homeVC, favoritesVC, cartVC]
     }
+    
+    private func configureTabBarAppearance() {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+
+        appearance.backgroundColor = .secondarySystemGroupedBackground
+        appearance.shadowColor = .separator
+
+        tabBar.tintColor = .label
+
+        tabBar.unselectedItemTintColor = .secondaryLabel
+
+        tabBar.standardAppearance = appearance
+        if #available(iOS 15.0, *) {
+            tabBar.scrollEdgeAppearance = appearance
+        }
+    }
+
 }
 
