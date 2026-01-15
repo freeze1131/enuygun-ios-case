@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 @main
 struct enuygun_ios_caseApp: App {
@@ -17,8 +18,12 @@ struct enuygun_ios_caseApp: App {
 }
 
 struct MainTabBarWrapper: UIViewControllerRepresentable {
+
+    // Container burada tek kez oluşsun
+    private let container: AppContainerProtocol = AppContainer()
+
     func makeUIViewController(context: Context) -> UIViewController {
-        MainTabBarController()
+        MainTabBarController(container: container)
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}

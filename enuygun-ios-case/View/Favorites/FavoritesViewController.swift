@@ -4,13 +4,21 @@
 //
 //  Created by Ahmet Ozen on 15.01.2026.
 //
-
 import UIKit
 
 final class FavoritesViewController: UIViewController {
 
-    private let viewModel = FavoritesViewModel()
+    private let viewModel: FavoritesViewModel
+    private let container: AppContainerProtocol
     private var collectionView: UICollectionView!
+
+    init(viewModel: FavoritesViewModel, container: AppContainerProtocol) {
+        self.viewModel = viewModel
+        self.container = container
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     private let emptyStateLabel: UILabel = {
         let l = UILabel()
@@ -77,7 +85,6 @@ final class FavoritesViewController: UIViewController {
 
         collectionView.dataSource = self
         collectionView.delegate = self
-
         collectionView.register(FavoriteCell.self, forCellWithReuseIdentifier: FavoriteCell.reuseIdentifier)
 
         view.addSubview(collectionView)
@@ -120,10 +127,8 @@ extension FavoritesViewController: UICollectionViewDataSource {
             ToastPresenter.show(on: self, message: "Added to Cart")
         }
 
-
         return cell
     }
-    
 
     private func confirmRemove(index: Int) {
         ToastPresenter.show(
@@ -136,7 +141,6 @@ extension FavoritesViewController: UICollectionViewDataSource {
             secondaryAction: .init(title: "Cancel", style: .cancel)
         )
     }
-
 
     private func animateCellAction(_ cell: UICollectionViewCell) {
         UIView.animate(withDuration: 0.12, animations: {
@@ -152,7 +156,13 @@ extension FavoritesViewController: UICollectionViewDataSource {
 extension FavoritesViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let product = viewModel.product(at: indexPath.item)
-        let vc = ProductDetailViewController(product: product)
+
+        let detailVM = ProductDetailViewModel(
+            product: product,
+            favoritesStore: container.favoritesStore,
+            cartStore: container.cartStore
+        )
+        let vc = ProductDetailViewController(viewModel: detailVM)
         navigationController?.pushViewController(vc, animated: true)
     }
 }

@@ -28,30 +28,34 @@ final class ProductListViewModel {
         }
     }
 
+    // MARK: - Dependencies
     private let service: ProductServiceProtocol
 
-    // API totals
+    // MARK: - Output
+    var onUpdate: (() -> Void)?
+
+    // MARK: - API totals
     private(set) var totalFromAPI: Int = 0
 
-    // Pagination state
+    // MARK: - Pagination state
     private var loadedCount: Int = 0
     private var isLoadingMore: Bool = false
     private var canLoadMore: Bool = true
 
+    // MARK: - Data
     private(set) var allProducts: [Product] = []
 
     private(set) var products: [Product] = [] {
         didSet { onUpdate?() }
     }
 
-    var onUpdate: (() -> Void)?
-
-    // Filters
+    // MARK: - Filters
     private var searchQuery: String = ""
     private var selectedCategory: String? = nil // nil = All
     private var sortOption: SortOption = .relevance
 
-    init(service: ProductService = ProductService()) {
+    // MARK: - Init
+    init(service: ProductServiceProtocol = ProductService()) {
         self.service = service
     }
 
@@ -87,12 +91,12 @@ final class ProductListViewModel {
 
             apply()
         } catch {
+            // şimdilik log; sonraki adımda state/error UI yapacağız
             print("Pagination error:", error)
         }
     }
 
     func shouldLoadMore(currentIndex: Int) -> Bool {
-        // When user scrolls near the end of currently rendered list, fetch next page.
         let threshold = max(0, products.count - 6)
         return currentIndex >= threshold
     }
@@ -121,12 +125,10 @@ final class ProductListViewModel {
     private func apply() {
         var result = allProducts
 
-        // Filter: category
         if let category = selectedCategory, !category.isEmpty {
             result = result.filter { $0.category == category }
         }
 
-        // Search: title + description + brand(optional)
         let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !q.isEmpty {
             result = result.filter { p in
@@ -139,7 +141,6 @@ final class ProductListViewModel {
             }
         }
 
-        // Sort
         switch sortOption {
         case .relevance:
             break
@@ -155,8 +156,8 @@ final class ProductListViewModel {
 
         products = result
     }
-    
+
+    // MARK: - Current selections
     func currentCategory() -> String? { selectedCategory }
     func currentSortOption() -> SortOption { sortOption }
-
 }

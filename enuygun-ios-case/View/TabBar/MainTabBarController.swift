@@ -9,10 +9,10 @@ import UIKit
 
 final class MainTabBarController: UITabBarController {
 
-    private let cartStore: CartStoreProtocol
+    private let container: AppContainerProtocol
 
-    init(cartStore: CartStoreProtocol = CartStore.shared) {
-        self.cartStore = cartStore
+    init(container: AppContainerProtocol) {
+        self.container = container
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -21,7 +21,7 @@ final class MainTabBarController: UITabBarController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        cartStore.onChange = { [weak self] in
+        container.cartStore.onChange = { [weak self] in
             self?.updateCartBadge()
         }
 
@@ -31,22 +31,42 @@ final class MainTabBarController: UITabBarController {
     }
 
     private func setupTabs() {
-        let productListVM = ProductListViewModel()
-        let homeVC = UINavigationController(rootViewController: ProductListViewController(viewModel: productListVM))
+        let productListVM = ProductListViewModel(service: container.productService)
+        let homeVC = UINavigationController(
+            rootViewController: ProductListViewController(
+                viewModel: productListVM,
+                container: container
+            )
+        )
         homeVC.tabBarItem = UITabBarItem(
             title: "Home",
             image: UIImage(systemName: "house"),
             selectedImage: UIImage(systemName: "house.fill")
         )
 
-        let favoritesVC = UINavigationController(rootViewController: FavoritesViewController())
+        let favoritesVM = FavoritesViewModel(
+            favoritesStore: container.favoritesStore,
+            cartStore: container.cartStore
+        )
+        let favoritesVC = UINavigationController(
+            rootViewController: FavoritesViewController(
+                viewModel: favoritesVM,
+                container: container
+            )
+        )
         favoritesVC.tabBarItem = UITabBarItem(
             title: "Favorites",
             image: UIImage(systemName: "heart"),
             selectedImage: UIImage(systemName: "heart.fill")
         )
 
-        let cartVC = UINavigationController(rootViewController: CartViewController())
+        let cartVM = CartViewModel(cartStore: container.cartStore)
+        let cartVC = UINavigationController(
+            rootViewController: CartViewController(
+                viewModel: cartVM,
+                container: container
+            )
+        )
         cartVC.tabBarItem = UITabBarItem(
             title: "Cart",
             image: UIImage(systemName: "cart"),
@@ -57,9 +77,8 @@ final class MainTabBarController: UITabBarController {
     }
 
     private func updateCartBadge() {
-        let count = cartStore.totalItemsCount
+        let count = container.cartStore.totalItemsCount
         let cartIndex = 2
-
         tabBar.items?[cartIndex].badgeValue = count > 0 ? "\(count)" : nil
     }
 

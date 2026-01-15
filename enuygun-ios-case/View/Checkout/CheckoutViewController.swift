@@ -8,7 +8,15 @@ import UIKit
 
 final class CheckoutViewController: UIViewController {
 
-    private let viewModel = CheckoutViewModel()
+    private let viewModel: CheckoutViewModel
+
+       init(viewModel: CheckoutViewModel) {
+           self.viewModel = viewModel
+           super.init(nibName: nil, bundle: nil)
+       }
+
+       required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
 
     // amount snapshot (success screen için)
     private var amountAtPayTime: String = "$0.00"

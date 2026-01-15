@@ -4,18 +4,30 @@
 //
 //  Created by Ahmet Ozen on 15.01.2026.
 //
-
 import UIKit
 
 final class ProductDetailViewController: UIViewController {
 
-    // MARK: - ViewModel
     private let viewModel: ProductDetailViewModel
+
+    // MARK: - Init
+    init(viewModel: ProductDetailViewModel) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
+
+
+    // Convenience init (istersen eski çağrıları bozmamak için)
+    convenience init(product: Product) {
+        let vm = ProductDetailViewModel(product: product)
+        self.init(viewModel: vm)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
 
     // MARK: - UI
     private let scrollView = UIScrollView()
     private let contentView = UIView()
-
     private var galleryCollectionView: UICollectionView!
 
     private let pageControl: UIPageControl = {
@@ -109,15 +121,6 @@ final class ProductDetailViewController: UIViewController {
         return b
     }()
 
-    // MARK: - Init
-    init(product: Product) {
-        self.viewModel = ProductDetailViewModel(product: product)
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    required init?(coder: NSCoder) { fatalError() }
-
-    // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
@@ -133,7 +136,6 @@ final class ProductDetailViewController: UIViewController {
         }
     }
 
-    // MARK: - Layout
     private func setupLayout() {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         contentView.translatesAutoresizingMaskIntoConstraints = false
@@ -179,7 +181,6 @@ final class ProductDetailViewController: UIViewController {
         contentView.addSubview(descriptionLabel)
 
         NSLayoutConstraint.activate([
-            
             pageControl.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
 
             titleLabel.topAnchor.constraint(equalTo: pageControl.bottomAnchor, constant: 12),
@@ -226,7 +227,6 @@ final class ProductDetailViewController: UIViewController {
         galleryCollectionView.delegate = self
         galleryCollectionView.register(GalleryImageCell.self, forCellWithReuseIdentifier: GalleryImageCell.reuseIdentifier)
         pageControl.addTarget(self, action: #selector(pageControlChanged), for: .valueChanged)
-        
 
         contentView.addSubview(galleryCollectionView)
 
@@ -234,17 +234,14 @@ final class ProductDetailViewController: UIViewController {
             galleryCollectionView.topAnchor.constraint(equalTo: contentView.topAnchor),
             galleryCollectionView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             galleryCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            galleryCollectionView.heightAnchor.constraint(equalToConstant: 280)
-        ])
-        
-        NSLayoutConstraint.activate([
+            galleryCollectionView.heightAnchor.constraint(equalToConstant: 280),
+
             pageControl.topAnchor.constraint(equalTo: galleryCollectionView.bottomAnchor, constant: 8),
             pageControl.centerXAnchor.constraint(equalTo: contentView.centerXAnchor)
         ])
 
         pageControl.pageIndicatorTintColor = UIColor.black.withAlphaComponent(0.3)
         pageControl.currentPageIndicatorTintColor = .black
-
     }
 
     override func viewDidLayoutSubviews() {
@@ -254,7 +251,6 @@ final class ProductDetailViewController: UIViewController {
         }
     }
 
-    // MARK: - Bind
     private func bindViewModel() {
         navigationItem.title = viewModel.titleText
 
@@ -280,26 +276,16 @@ final class ProductDetailViewController: UIViewController {
         configureFavoriteButton()
         galleryCollectionView.reloadData()
     }
-    
+
     @objc private func pageControlChanged() {
         let index = pageControl.currentPage
         let indexPath = IndexPath(item: index, section: 0)
-
-        galleryCollectionView.scrollToItem(
-            at: indexPath,
-            at: .centeredHorizontally,
-            animated: true
-        )
+        galleryCollectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
     }
 
-
-    // MARK: - Actions
     @objc private func addToCartTapped() {
         viewModel.addToCart()
-        ToastPresenter.show(
-            on: self,
-            message: "Added to Cart"
-        )
+        ToastPresenter.show(on: self, message: "Added to Cart")
     }
 
     @objc private func favoriteTapped() {
@@ -327,7 +313,6 @@ final class ProductDetailViewController: UIViewController {
     }
 }
 
-// MARK: - Gallery DataSource
 extension ProductDetailViewController: UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         viewModel.galleryImages.count
@@ -347,7 +332,6 @@ extension ProductDetailViewController: UICollectionViewDataSource {
     }
 }
 
-// MARK: - Gallery Delegate
 extension ProductDetailViewController: UICollectionViewDelegate {
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
         let page = Int(scrollView.contentOffset.x / max(scrollView.bounds.width, 1))

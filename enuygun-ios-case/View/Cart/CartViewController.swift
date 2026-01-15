@@ -4,13 +4,22 @@
 //
 //  Created by Ahmet Ozen on 15.01.2026.
 //
-
 import UIKit
 
 final class CartViewController: UIViewController {
 
-    private let viewModel = CartViewModel()
+    private let viewModel: CartViewModel
+    private let container: AppContainerProtocol
+
     private var collectionView: UICollectionView!
+
+    init(viewModel: CartViewModel, container: AppContainerProtocol) {
+        self.viewModel = viewModel
+        self.container = container
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     // MARK: - Bottom Bar
     private let bottomBar: UIView = {
@@ -99,7 +108,6 @@ final class CartViewController: UIViewController {
         setupBottomBar()
         setupCollectionView()
         setupEmptyState()
-
         bindViewModel()
 
         checkoutButton.addTarget(self, action: #selector(checkoutTapped), for: .touchUpInside)
@@ -128,12 +136,9 @@ final class CartViewController: UIViewController {
 
     private func applyEmptyState() {
         let isEmpty = viewModel.items.isEmpty
-
         bottomBar.isHidden = isEmpty
-
         emptyStateView.isHidden = !isEmpty
-
-        collectionView.isHidden = false 
+        collectionView.isHidden = false
     }
 
     // MARK: - UI Setup
@@ -215,14 +220,14 @@ final class CartViewController: UIViewController {
 
     // MARK: - Actions
     @objc private func checkoutTapped() {
-        let vc = CheckoutViewController()
+        let vm = CheckoutViewModel(cartStore: container.cartStore)
+        let vc = CheckoutViewController(viewModel: vm)
         navigationController?.pushViewController(vc, animated: true)
     }
 
+
     @objc private func goHomeTapped() {
-        // Home tab index 0 varsayımı
         tabBarController?.selectedIndex = 0
-        // Eğer Home içinde Navigation root’a dönmek istersen:
         if let nav = tabBarController?.viewControllers?.first as? UINavigationController {
             nav.popToRootViewController(animated: true)
         }
@@ -286,5 +291,4 @@ extension CartViewController: UICollectionViewDelegate {
             secondaryAction: .init(title: "Cancel", style: .cancel)
         )
     }
-
 }

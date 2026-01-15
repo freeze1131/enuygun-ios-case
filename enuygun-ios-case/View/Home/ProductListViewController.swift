@@ -9,6 +9,15 @@ import UIKit
 final class ProductListViewController: UIViewController {
 
     private let viewModel: ProductListViewModel
+    private let container: AppContainerProtocol
+
+       init(viewModel: ProductListViewModel, container: AppContainerProtocol) {
+           self.viewModel = viewModel
+           self.container = container
+           super.init(nibName: nil, bundle: nil)
+       }
+
+       required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     private let refreshControl = UIRefreshControl()
     private var collectionView: UICollectionView!
@@ -16,13 +25,6 @@ final class ProductListViewController: UIViewController {
     private let searchField = UITextField()
     private let filterButton = UIButton(type: .system)
     private let sortButton = UIButton(type: .system)
-
-    init(viewModel: ProductListViewModel) {
-        self.viewModel = viewModel
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -285,7 +287,13 @@ extension ProductListViewController: UICollectionViewDataSource {
 extension ProductListViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let product = viewModel.products[indexPath.item]
-        let detailVC = ProductDetailViewController(product: product)
+
+        let detailVM = ProductDetailViewModel(
+            product: product,
+            favoritesStore: container.favoritesStore,
+            cartStore: container.cartStore
+        )
+        let detailVC = ProductDetailViewController(viewModel: detailVM)
         navigationController?.pushViewController(detailVC, animated: true)
     }
 }
