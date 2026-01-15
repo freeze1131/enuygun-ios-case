@@ -21,9 +21,13 @@ final class ProductListViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
 
+        
+        setPillSelected(filterButton, selected: false)
+        setPillSelected(sortButton, selected: false)
         setupNavigationTitle(title: "Ürünler", count: 0, total: 0)
         setupHeader()
         setupCollectionView()
+        updateFilterSortTitles()
         
         let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         tap.cancelsTouchesInView = false
@@ -130,6 +134,26 @@ final class ProductListViewController: UIViewController {
             searchField.heightAnchor.constraint(equalToConstant: 44)
         ])
     }
+    
+    private func updateFilterSortTitles() {
+        let isFilterSelected = viewModel.currentCategory() != nil
+        setPillSelected(filterButton, selected: isFilterSelected)
+
+        let isSortSelected = viewModel.currentSortOption() != .relevance
+        setPillSelected(sortButton, selected: isSortSelected)
+    }
+
+    private func setPillSelected(_ button: UIButton, selected: Bool) {
+        if selected {
+            button.backgroundColor = .label
+            button.tintColor = .systemBackground
+        } else {
+            button.backgroundColor = .secondarySystemBackground
+            button.tintColor = .label
+        }
+    }
+
+
 
     // MARK: - CollectionView
     private func setupCollectionView() {
@@ -176,13 +200,21 @@ final class ProductListViewController: UIViewController {
     @objc private func filterTapped() {
         let sheet = UIAlertController(title: "Filter", message: nil, preferredStyle: .actionSheet)
 
-        sheet.addAction(UIAlertAction(title: "All", style: .default) { [weak self] _ in
+        let current = viewModel.currentCategory() // nil = All
+
+        let allTitle = (current == nil) ? "✓ All" : "All"
+        sheet.addAction(UIAlertAction(title: allTitle, style: .default) { [weak self] _ in
             self?.viewModel.setCategory(nil)
+            self?.setPillSelected(self!.filterButton, selected: false)
         })
 
         for category in viewModel.availableCategories() {
-            sheet.addAction(UIAlertAction(title: category.capitalized, style: .default) { [weak self] _ in
+            let isSelected = (current == category)
+            let title = isSelected ? "✓ \(category.capitalized)" : category.capitalized
+
+            sheet.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
                 self?.viewModel.setCategory(category)
+                self?.setPillSelected(self!.filterButton, selected: true)
             })
         }
 
@@ -192,16 +224,22 @@ final class ProductListViewController: UIViewController {
 
     @objc private func sortTapped() {
         let sheet = UIAlertController(title: "Sort", message: nil, preferredStyle: .actionSheet)
-        
+
+        let current = viewModel.currentSortOption()
+
         for option in ProductListViewModel.SortOption.allCases {
-            sheet.addAction(UIAlertAction(title: option.title, style: .default) { [weak self] _ in
+            let title = (option == current) ? "✓ \(option.title)" : option.title
+
+            sheet.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
                 self?.viewModel.setSortOption(option)
+                self?.setPillSelected(self!.sortButton, selected: option != .relevance)
             })
         }
-        
+
         sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(sheet, animated: true)
     }
+
     
     @objc private func dismissKeyboard() {
         view.endEditing(true)

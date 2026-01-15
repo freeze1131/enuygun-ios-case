@@ -252,6 +252,8 @@ final class ProductDetailViewController: UIViewController {
 
         galleryCollectionView.reloadData()
     }
+    
+    
 
     @objc private func favoriteTapped() {
         favoritesStore.toggle(product)

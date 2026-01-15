@@ -155,4 +155,8 @@ final class ProductListViewModel {
 
         products = result
     }
+    
+    func currentCategory() -> String? { selectedCategory }
+    func currentSortOption() -> SortOption { sortOption }
+
 }
