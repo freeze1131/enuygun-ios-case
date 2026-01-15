@@ -15,6 +15,7 @@ final class ProductCell: UICollectionViewCell {
         iv.contentMode = .scaleAspectFill
         iv.clipsToBounds = true
         iv.layer.cornerRadius = 8
+        iv.backgroundColor = .tertiarySystemBackground
         iv.translatesAutoresizingMaskIntoConstraints = false
         return iv
     }()
@@ -55,13 +56,22 @@ final class ProductCell: UICollectionViewCell {
         setupUI()
     }
 
-    required init?(coder: NSCoder) {
-        fatalError()
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        // Reset UI
+        productImageView.image = UIImage(systemName: "photo")
+        titleLabel.text = nil
+        priceLabel.text = nil
+        oldPriceLabel.attributedText = nil
+        discountLabel.text = nil
     }
 
     private func setupUI() {
         contentView.backgroundColor = .secondarySystemBackground
         contentView.layer.cornerRadius = 12
+        contentView.layer.masksToBounds = true
 
         contentView.addSubview(productImageView)
         contentView.addSubview(titleLabel)
@@ -98,20 +108,24 @@ final class ProductCell: UICollectionViewCell {
             let discountedPrice = price * (1 - discount / 100)
             priceLabel.text = String(format: "$%.2f", discountedPrice)
 
-            oldPriceLabel.text = String(format: "$%.2f", price)
+            let old = String(format: "$%.2f", price)
             oldPriceLabel.attributedText = NSAttributedString(
-                string: oldPriceLabel.text ?? "",
+                string: old,
                 attributes: [.strikethroughStyle: NSUnderlineStyle.single.rawValue]
             )
 
             discountLabel.text = "%\(Int(discount)) OFF"
         } else {
             priceLabel.text = String(format: "$%.2f", price)
-            oldPriceLabel.text = nil
+            oldPriceLabel.attributedText = nil
             discountLabel.text = nil
         }
 
-        // Şimdilik placeholder
+        // Image
         productImageView.image = UIImage(systemName: "photo")
+        ImageLoader.shared.load(from: product.thumbnail) { [weak self] image in
+            self?.productImageView.image = image ?? UIImage(systemName: "photo")
+        }
+
     }
 }
