@@ -87,7 +87,6 @@ final class ProductListViewController: UIViewController {
         searchField.autocorrectionType = .no
         searchField.delegate = self
 
-        // sol icon padding düzeltmesi
         if let iv = searchField.leftView as? UIImageView {
             iv.tintColor = .secondaryLabel
             iv.contentMode = .center
@@ -157,29 +156,6 @@ final class ProductListViewController: UIViewController {
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
-}
-
-extension ProductListViewController: UICollectionViewDataSource {
-
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        viewModel.products.count
-    }
-
-    func collectionView(
-        _ collectionView: UICollectionView,
-        cellForItemAt indexPath: IndexPath
-    ) -> UICollectionViewCell {
-        guard let cell = collectionView.dequeueReusableCell(
-            withReuseIdentifier: ProductCell.reuseIdentifier,
-            for: indexPath
-        ) as? ProductCell else {
-            return UICollectionViewCell()
-        }
-
-        let product = viewModel.products[indexPath.item]
-        cell.configure(with: product)
-        return cell
-    }
     
     
     
@@ -221,17 +197,38 @@ extension ProductListViewController: UICollectionViewDataSource {
     @objc private func dismissKeyboard() {
         view.endEditing(true)
     }
-
 }
 
+// MARK: - UICollectionViewDataSource
+extension ProductListViewController: UICollectionViewDataSource {
 
-extension ProductListViewController: UITextFieldDelegate {
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        textField.resignFirstResponder()
-        return true
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        viewModel.products.count
+    }
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        cellForItemAt indexPath: IndexPath
+    ) -> UICollectionViewCell {
+        guard let cell = collectionView.dequeueReusableCell(
+            withReuseIdentifier: ProductCell.reuseIdentifier,
+            for: indexPath
+        ) as? ProductCell else {
+            return UICollectionViewCell()
+        }
+
+        let product = viewModel.products[indexPath.item]
+        cell.configure(with: product)
+
+        if viewModel.shouldLoadMore(currentIndex: indexPath.item) {
+            Task { await viewModel.loadMoreIfNeeded() }
+        }
+
+        return cell
     }
 }
 
+// MARK: - UICollectionViewDelegate
 extension ProductListViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let product = viewModel.products[indexPath.item]
@@ -240,3 +237,10 @@ extension ProductListViewController: UICollectionViewDelegate {
     }
 }
 
+// MARK: - UITextFieldDelegate
+extension ProductListViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
+    }
+}

@@ -9,21 +9,22 @@ import Foundation
 
 final class ProductService {
 
-    func fetchProducts() async throws -> ProductResponse {
-        let urlString = APIConstants.baseURL + APIConstants.productsPath
-        guard let url = URL(string: urlString) else {
-            throw URLError(.badURL)
-        }
+    func fetchProducts(skip: Int, limit: Int = APIConstants.pageLimit) async throws -> ProductResponse {
+        var components = URLComponents(string: APIConstants.baseURL + APIConstants.productsPath)
+        components?.queryItems = [
+            URLQueryItem(name: "limit", value: "\(limit)"),
+            URLQueryItem(name: "skip", value: "\(skip)")
+        ]
+
+        guard let url = components?.url else { throw URLError(.badURL) }
 
         let (data, response) = try await URLSession.shared.data(from: url)
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              200..<300 ~= httpResponse.statusCode else {
+        guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
             throw URLError(.badServerResponse)
         }
 
-        let decodedResponse = try JSONDecoder().decode(ProductResponse.self, from: data)
-        return decodedResponse
+        return try JSONDecoder().decode(ProductResponse.self, from: data)
     }
 }
 

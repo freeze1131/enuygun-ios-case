@@ -30,32 +30,74 @@ final class ProductListViewModel {
 
     private let service: ProductService
 
+    // API totals
     private(set) var totalFromAPI: Int = 0
+
+    // Pagination state
+    private var loadedCount: Int = 0
+    private var isLoadingMore: Bool = false
+    private var canLoadMore: Bool = true
+
     private(set) var allProducts: [Product] = []
-    private(set) var products: [Product] = [] { didSet { onUpdate?() } }
+
+    private(set) var products: [Product] = [] {
+        didSet { onUpdate?() }
+    }
 
     var onUpdate: (() -> Void)?
 
+    // Filters
     private var searchQuery: String = ""
-    private var selectedCategory: String? = nil   // nil = All
+    private var selectedCategory: String? = nil // nil = All
     private var sortOption: SortOption = .relevance
 
     init(service: ProductService = ProductService()) {
         self.service = service
     }
 
+    // MARK: - Initial Load (resets pagination)
     func loadProducts() async {
+        loadedCount = 0
+        isLoadingMore = false
+        canLoadMore = true
+
+        totalFromAPI = 0
+        allProducts = []
+        products = []
+
+        await loadMoreIfNeeded(force: true)
+    }
+
+    // MARK: - Pagination
+    func loadMoreIfNeeded(force: Bool = false) async {
+        guard !isLoadingMore else { return }
+        guard canLoadMore || force else { return }
+
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+
         do {
-            let response = try await service.fetchProducts()
+            let response = try await service.fetchProducts(skip: loadedCount, limit: APIConstants.pageLimit)
             totalFromAPI = response.total
-            allProducts = response.products
+
+            allProducts.append(contentsOf: response.products)
+            loadedCount = allProducts.count
+
+            canLoadMore = loadedCount < totalFromAPI
+
             apply()
         } catch {
-            print("ViewModel error:", error)
-            // İstersen burada error state ekleriz (sonra)
+            print("Pagination error:", error)
         }
     }
 
+    func shouldLoadMore(currentIndex: Int) -> Bool {
+        // When user scrolls near the end of currently rendered list, fetch next page.
+        let threshold = max(0, products.count - 6)
+        return currentIndex >= threshold
+    }
+
+    // MARK: - Search / Filter / Sort inputs
     func setSearchQuery(_ query: String) {
         searchQuery = query
         apply()

@@ -10,4 +10,5 @@ import Foundation
 enum APIConstants {
     static let baseURL = "https://dummyjson.com"
     static let productsPath = "/products"
+    static let pageLimit = 30
 }
