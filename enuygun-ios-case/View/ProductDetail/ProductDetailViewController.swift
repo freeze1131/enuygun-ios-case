@@ -294,8 +294,8 @@ final class ProductDetailViewController: UIViewController {
         titleLabel.text = product.title
         descriptionLabel.text = product.description
 
-        let categoryText = product.category.capitalized
-        let brandText = (product.brand ?? "").isEmpty ? "-" : (product.brand ?? "-")
+//        let categoryText = product.category.capitalized
+//        let brandText = (product.brand ?? "").isEmpty ? "-" : (product.brand ?? "-")
 
         navigationItem.title = product.title
 

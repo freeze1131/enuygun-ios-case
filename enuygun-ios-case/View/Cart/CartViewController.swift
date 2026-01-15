@@ -60,7 +60,7 @@ final class CartViewController: UIViewController {
 
     private let emptyTitleLabel: UILabel = {
         let l = UILabel()
-        l.text = "Sepet boş"
+        l.text = "Your cart is empty."
         l.font = .systemFont(ofSize: 20, weight: .bold)
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
@@ -68,7 +68,7 @@ final class CartViewController: UIViewController {
 
     private let emptySubtitleLabel: UILabel = {
         let l = UILabel()
-        l.text = "Ürün eklemek için ana sayfaya dönebilirsin."
+        l.text = "You can go to home to add products to the cart."
         l.font = .systemFont(ofSize: 14)
         l.textColor = .secondaryLabel
         l.numberOfLines = 0
@@ -93,7 +93,7 @@ final class CartViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
-        navigationItem.title = "Sepet"
+        navigationItem.title = "Cart"
         navigationItem.largeTitleDisplayMode = .never
         
         setupBottomBar()
@@ -226,15 +226,12 @@ final class CartViewController: UIViewController {
 
 
     @objc private func goHomeTapped() {
-        // TabBar kullanıyorsun: Home genelde index 0
         tabBarController?.selectedIndex = 0
     }
 
     @objc private func checkoutTapped() {
-        // Checkout sonraki adımda yapacağız
-        let alert = UIAlertController(title: "Checkout", message: "Next: Checkout screen", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        let vc = CheckoutViewController()
+        navigationController?.pushViewController(vc, animated: true)
     }
 }
 

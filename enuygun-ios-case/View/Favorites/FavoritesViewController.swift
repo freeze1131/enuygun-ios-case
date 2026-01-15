@@ -15,17 +15,60 @@ final class FavoritesViewController: UIViewController {
     private var collectionView: UICollectionView!
 
     private var items: [Product] = []
+    
+    // Empty state
+    private let emptyStateView: UIView = {
+        let v = UIView()
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+
+    private let emptyTitleLabel: UILabel = {
+        let l = UILabel()
+        l.text = "Your favorites are empty."
+        l.font = .systemFont(ofSize: 20, weight: .bold)
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
+    private let emptySubtitleLabel: UILabel = {
+        let l = UILabel()
+        l.text = "You can go to home to add products to the favorites."
+        l.font = .systemFont(ofSize: 14)
+        l.textColor = .secondaryLabel
+        l.numberOfLines = 0
+        l.textAlignment = .center
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
+    private let goHomeButton: UIButton = {
+        let b = UIButton(type: .system)
+        b.setTitle("Go to Home", for: .normal)
+        b.titleLabel?.font = .systemFont(ofSize: 15, weight: .bold)
+        b.backgroundColor = .secondarySystemGroupedBackground
+        b.setTitleColor(.label, for: .normal)
+        b.layer.cornerRadius = 14
+        b.layer.borderWidth = 1
+        b.layer.borderColor = UIColor.separator.cgColor
+        b.translatesAutoresizingMaskIntoConstraints = false
+        return b
+    }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
 
-        title = "Favoriler"
+        title = "Favorites"
         navigationItem.largeTitleDisplayMode = .never
 
         setupCollectionView()
+        setupEmptyState()
         bindStores()
         reloadData()
+        
+        
+        goHomeButton.addTarget(self, action: #selector(goHomeTapped), for: .touchUpInside)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -41,8 +84,14 @@ final class FavoritesViewController: UIViewController {
 
     private func reloadData() {
         items = favoritesStore.favorites
-        navigationItem.title = "Favoriler (\(items.count))"
+        navigationItem.title = "Favorites (\(items.count))"
+        
         collectionView.reloadData()
+        
+        
+        let hasItems = !items.isEmpty
+        emptyStateView.isHidden = hasItems
+        
     }
 
     private func setupCollectionView() {
@@ -68,6 +117,37 @@ final class FavoritesViewController: UIViewController {
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+    
+    private func setupEmptyState() {
+        view.addSubview(emptyStateView)
+        emptyStateView.addSubview(emptyTitleLabel)
+        emptyStateView.addSubview(emptySubtitleLabel)
+        emptyStateView.addSubview(goHomeButton)
+
+        NSLayoutConstraint.activate([
+            emptyStateView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            emptyStateView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            emptyStateView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            emptyStateView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+
+            emptyTitleLabel.topAnchor.constraint(equalTo: emptyStateView.topAnchor),
+            emptyTitleLabel.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
+
+            emptySubtitleLabel.topAnchor.constraint(equalTo: emptyTitleLabel.bottomAnchor, constant: 8),
+            emptySubtitleLabel.leadingAnchor.constraint(equalTo: emptyStateView.leadingAnchor),
+            emptySubtitleLabel.trailingAnchor.constraint(equalTo: emptyStateView.trailingAnchor),
+
+            goHomeButton.topAnchor.constraint(equalTo: emptySubtitleLabel.bottomAnchor, constant: 16),
+            goHomeButton.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
+            goHomeButton.heightAnchor.constraint(equalToConstant: 44),
+            goHomeButton.widthAnchor.constraint(equalToConstant: 160),
+            goHomeButton.bottomAnchor.constraint(equalTo: emptyStateView.bottomAnchor)
+        ])
+    }
+    
+    @objc private func goHomeTapped() {
+        tabBarController?.selectedIndex = 0
     }
 }
 

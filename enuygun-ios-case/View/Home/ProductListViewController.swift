@@ -24,7 +24,7 @@ final class ProductListViewController: UIViewController {
         
         setPillSelected(filterButton, selected: false)
         setPillSelected(sortButton, selected: false)
-        setupNavigationTitle(title: "Ürünler", count: 0, total: 0)
+        setupNavigationTitle(title: "Products", count: 0, total: 0)
         setupHeader()
         setupCollectionView()
         updateFilterSortTitles()
@@ -38,7 +38,7 @@ final class ProductListViewController: UIViewController {
         viewModel.onUpdate = { [weak self] in
             guard let self else { return }
             self.setupNavigationTitle(
-                title: "Ürünler",
+                title: "Products",
                 count: self.viewModel.products.count,
                 total: self.viewModel.totalFromAPI
             )
@@ -54,7 +54,7 @@ final class ProductListViewController: UIViewController {
     }
 
 
-    // MARK: - Nav title (Ürünler + sayı)
+    // MARK: - Nav title (Products + sayı)
     private func setupNavigationTitle(title: String, count: Int, total: Int) {
         let titleLabel = UILabel()
         titleLabel.text = title
