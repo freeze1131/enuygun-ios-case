@@ -11,8 +11,8 @@ import UIKit
 final class ProductDetailViewModel {
 
     // MARK: - Dependencies
-    private let favoritesStore = FavoritesStore.shared
-    private let cartStore = CartStore.shared
+    private let favoritesStore: FavoritesStoreProtocol
+    private let cartStore: CartStoreProtocol
 
     // MARK: - State
     let product: Product
@@ -21,34 +21,30 @@ final class ProductDetailViewModel {
     var onUpdate: (() -> Void)?
 
     // MARK: - Init
-    init(product: Product) {
+    init(
+        product: Product,
+        favoritesStore: FavoritesStoreProtocol = FavoritesStore.shared,
+        cartStore: CartStoreProtocol = CartStore.shared
+    ) {
         self.product = product
+        self.favoritesStore = favoritesStore
+        self.cartStore = cartStore
     }
 
     // MARK: - Derived UI Data
 
-    var titleText: String {
-        product.title
-    }
-
-    var descriptionText: String {
-        product.description
-    }
+    var titleText: String { product.title }
+    var descriptionText: String { product.description }
 
     var galleryImages: [String] {
-        if !product.images.isEmpty {
-            return product.images
-        }
-        return [product.thumbnail]
+        !product.images.isEmpty ? product.images : [product.thumbnail]
     }
 
     var ratingText: String {
         "★ \(String(format: "%.2f", product.rating))"
     }
 
-    var categoryTag: String {
-        product.category.capitalized
-    }
+    var categoryTag: String { product.category.capitalized }
 
     var brandTag: String? {
         guard let brand = product.brand, !brand.isEmpty else { return nil }
@@ -63,10 +59,7 @@ final class ProductDetailViewModel {
     }
 
     var oldPriceText: NSAttributedString? {
-        guard let discount = product.discountPercentage, discount > 0 else {
-            return nil
-        }
-
+        guard let discount = product.discountPercentage, discount > 0 else { return nil }
         let text = String(format: "$%.2f", product.price)
         return NSAttributedString(
             string: text,
@@ -75,16 +68,12 @@ final class ProductDetailViewModel {
     }
 
     var discountText: String? {
-        guard let discount = product.discountPercentage, discount > 0 else {
-            return nil
-        }
+        guard let discount = product.discountPercentage, discount > 0 else { return nil }
         return "%\(Int(discount)) OFF"
     }
 
     private var discountedPrice: Double? {
-        guard let discount = product.discountPercentage, discount > 0 else {
-            return nil
-        }
+        guard let discount = product.discountPercentage, discount > 0 else { return nil }
         return product.price * (1 - discount / 100)
     }
 

@@ -28,7 +28,7 @@ final class ProductListViewModel {
         }
     }
 
-    private let service: ProductService
+    private let service: ProductServiceProtocol
 
     // API totals
     private(set) var totalFromAPI: Int = 0

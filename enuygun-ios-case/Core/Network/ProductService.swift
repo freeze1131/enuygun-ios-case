@@ -7,7 +7,19 @@
 
 import Foundation
 
-final class ProductService {
+protocol ProductServiceProtocol {
+    func fetchProducts(skip: Int, limit: Int) async throws -> ProductResponse
+}
+
+final class ProductService: ProductServiceProtocol {
+
+    private let session: URLSession
+    private let decoder: JSONDecoder
+
+    init(session: URLSession = .shared, decoder: JSONDecoder = JSONDecoder()) {
+        self.session = session
+        self.decoder = decoder
+    }
 
     func fetchProducts(skip: Int, limit: Int = APIConstants.pageLimit) async throws -> ProductResponse {
         var components = URLComponents(string: APIConstants.baseURL + APIConstants.productsPath)
@@ -18,14 +30,12 @@ final class ProductService {
 
         guard let url = components?.url else { throw URLError(.badURL) }
 
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await session.data(from: url)
 
         guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
             throw URLError(.badServerResponse)
         }
 
-        return try JSONDecoder().decode(ProductResponse.self, from: data)
+        return try decoder.decode(ProductResponse.self, from: data)
     }
 }
-
-

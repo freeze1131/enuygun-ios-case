@@ -7,7 +7,21 @@
 
 import Foundation
 
-final class CartStore {
+
+protocol CartStoreProtocol: AnyObject {
+    var items: [CartItem] { get }
+    var totalItemsCount: Int { get }
+    var onChange: (() -> Void)? { get set }
+
+    func add(_ product: Product)
+    func remove(productId: Int)
+    func increase(productId: Int)
+    func decrease(productId: Int)
+    func clear()
+}
+
+
+final class CartStore: CartStoreProtocol {
     static let shared = CartStore()
 
     private(set) var items: [CartItem] = [] {

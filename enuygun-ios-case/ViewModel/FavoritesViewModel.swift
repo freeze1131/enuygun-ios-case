@@ -11,8 +11,8 @@ import UIKit
 final class FavoritesViewModel {
 
     // MARK: - Dependencies
-    private let favoritesStore = FavoritesStore.shared
-    private let cartStore = CartStore.shared
+    private let favoritesStore: FavoritesStoreProtocol
+    private let cartStore: CartStoreProtocol
 
     // MARK: - Output
     var onUpdate: (() -> Void)?
@@ -22,7 +22,12 @@ final class FavoritesViewModel {
     }
 
     // MARK: - Init
-    init() {
+    init(
+        favoritesStore: FavoritesStoreProtocol = FavoritesStore.shared,
+        cartStore: CartStoreProtocol = CartStore.shared
+    ) {
+        self.favoritesStore = favoritesStore
+        self.cartStore = cartStore
         load()
     }
 
@@ -95,4 +100,3 @@ final class FavoritesViewModel {
         }
     }
 }
-

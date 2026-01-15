@@ -11,7 +11,13 @@ import UIKit
 final class CartViewModel {
 
     // MARK: - Dependencies
-    private let cartStore = CartStore.shared
+    private let cartStore: CartStoreProtocol
+
+    // MARK: - Init
+    init(cartStore: CartStoreProtocol = CartStore.shared) {
+        self.cartStore = cartStore
+        load()
+    }
 
     // MARK: - State
     private(set) var items: [CartItem] = [] {
@@ -20,10 +26,6 @@ final class CartViewModel {
 
     var onUpdate: (() -> Void)?
 
-    // MARK: - Init
-    init() {
-        load()
-    }
 
     // MARK: - Public API
 

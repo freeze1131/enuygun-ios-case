@@ -41,7 +41,12 @@ final class CheckoutViewModel {
         }
     }
 
-    private let cartStore = CartStore.shared
+    // MARK: - Dependencies
+    private let cartStore: CartStoreProtocol
+
+    init(cartStore: CartStoreProtocol = CartStore.shared) {
+        self.cartStore = cartStore
+    }
 
     private(set) var state: State = .idle {
         didSet { onUpdate?() }
@@ -83,7 +88,6 @@ final class CheckoutViewModel {
         delivery = option
     }
 
-    /// Success ekranında göstermek için: pay'e basıldığı anda alınacak total.
     func amountTextBeforePay() -> String {
         totalText
     }

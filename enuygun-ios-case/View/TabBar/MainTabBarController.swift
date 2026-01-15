@@ -9,19 +9,30 @@ import UIKit
 
 final class MainTabBarController: UITabBarController {
 
+    private let cartStore: CartStoreProtocol
+
+    init(cartStore: CartStoreProtocol = CartStore.shared) {
+        self.cartStore = cartStore
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        CartStore.shared.onChange = { [weak self] in
+
+        cartStore.onChange = { [weak self] in
             self?.updateCartBadge()
         }
-        
+
         setupTabs()
         configureTabBarAppearance()
         updateCartBadge()
     }
 
     private func setupTabs() {
-        let homeVC = UINavigationController(rootViewController: ProductListViewController())
+        let productListVM = ProductListViewModel()
+        let homeVC = UINavigationController(rootViewController: ProductListViewController(viewModel: productListVM))
         homeVC.tabBarItem = UITabBarItem(
             title: "Home",
             image: UIImage(systemName: "house"),
@@ -44,16 +55,21 @@ final class MainTabBarController: UITabBarController {
 
         viewControllers = [homeVC, favoritesVC, cartVC]
     }
-    
+
+    private func updateCartBadge() {
+        let count = cartStore.totalItemsCount
+        let cartIndex = 2
+
+        tabBar.items?[cartIndex].badgeValue = count > 0 ? "\(count)" : nil
+    }
+
     private func configureTabBarAppearance() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
-
         appearance.backgroundColor = .secondarySystemGroupedBackground
         appearance.shadowColor = .separator
 
         tabBar.tintColor = .label
-
         tabBar.unselectedItemTintColor = .secondaryLabel
 
         tabBar.standardAppearance = appearance
@@ -61,18 +77,4 @@ final class MainTabBarController: UITabBarController {
             tabBar.scrollEdgeAppearance = appearance
         }
     }
-    
-    private func updateCartBadge() {
-        let count = CartStore.shared.totalItemsCount
-        let cartIndex = 2 
-
-        if count > 0 {
-            tabBar.items?[cartIndex].badgeValue = "\(count)"
-        } else {
-            tabBar.items?[cartIndex].badgeValue = nil
-        }
-    }
-
-
 }
-

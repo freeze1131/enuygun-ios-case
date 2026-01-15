@@ -6,7 +6,17 @@
 //
 import Foundation
 
-final class FavoritesStore {
+
+protocol FavoritesStoreProtocol: AnyObject {
+    func isFavorite(_ product: Product) -> Bool
+    func toggle(_ product: Product)
+
+    func all() -> [Product]
+    func remove(_ product: Product)
+}
+
+
+final class FavoritesStore: FavoritesStoreProtocol {
     static let shared = FavoritesStore()
 
     private let storageKey = "favorite_products_v1"

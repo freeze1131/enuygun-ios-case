@@ -8,7 +8,7 @@ import UIKit
 
 final class ProductListViewController: UIViewController {
 
-    private let viewModel = ProductListViewModel()
+    private let viewModel: ProductListViewModel
 
     private let refreshControl = UIRefreshControl()
     private var collectionView: UICollectionView!
@@ -17,22 +17,28 @@ final class ProductListViewController: UIViewController {
     private let filterButton = UIButton(type: .system)
     private let sortButton = UIButton(type: .system)
 
+    init(viewModel: ProductListViewModel) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
 
-        
         setPillSelected(filterButton, selected: false)
         setPillSelected(sortButton, selected: false)
+
         setupNavigationTitle(title: "Products", count: 0, total: 0)
         setupHeader()
         setupCollectionView()
         updateFilterSortTitles()
-        
+
         let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         tap.cancelsTouchesInView = false
         view.addGestureRecognizer(tap)
-
 
         // ViewModel -> UI
         viewModel.onUpdate = { [weak self] in
@@ -42,6 +48,7 @@ final class ProductListViewController: UIViewController {
                 count: self.viewModel.products.count,
                 total: self.viewModel.totalFromAPI
             )
+            self.updateFilterSortTitles()
             self.collectionView.reloadData()
         }
 
@@ -52,7 +59,6 @@ final class ProductListViewController: UIViewController {
 
         Task { await viewModel.loadProducts() }
     }
-
 
     // MARK: - Nav title (Products + sayı)
     private func setupNavigationTitle(title: String, count: Int, total: Int) {
@@ -72,7 +78,6 @@ final class ProductListViewController: UIViewController {
 
         navigationItem.titleView = stack
     }
-
 
     // MARK: - Header (search + filter + sort)
     private func setupHeader() {
@@ -137,7 +142,7 @@ final class ProductListViewController: UIViewController {
             searchField.heightAnchor.constraint(equalToConstant: 44)
         ])
     }
-    
+
     private func updateFilterSortTitles() {
         let isFilterSelected = viewModel.currentCategory() != nil
         setPillSelected(filterButton, selected: isFilterSelected)
@@ -156,8 +161,6 @@ final class ProductListViewController: UIViewController {
         }
     }
 
-
-
     // MARK: - CollectionView
     private func setupCollectionView() {
         let layout = UICollectionViewFlowLayout()
@@ -173,9 +176,9 @@ final class ProductListViewController: UIViewController {
         collectionView.delegate = self
         collectionView.dataSource = self
         collectionView.register(ProductCell.self, forCellWithReuseIdentifier: ProductCell.reuseIdentifier)
+
         refreshControl.addTarget(self, action: #selector(didPullToRefresh), for: .valueChanged)
         collectionView.refreshControl = refreshControl
-
 
         view.addSubview(collectionView)
 
@@ -186,8 +189,7 @@ final class ProductListViewController: UIViewController {
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
-    
-    
+
     @objc private func didPullToRefresh() {
         Task {
             await viewModel.loadProducts()
@@ -195,7 +197,6 @@ final class ProductListViewController: UIViewController {
         }
     }
 
-    
     @objc private func searchChanged() {
         viewModel.setSearchQuery(searchField.text ?? "")
     }
@@ -207,8 +208,9 @@ final class ProductListViewController: UIViewController {
 
         let allTitle = (current == nil) ? "✓ All" : "All"
         sheet.addAction(UIAlertAction(title: allTitle, style: .default) { [weak self] _ in
-            self?.viewModel.setCategory(nil)
-            self?.setPillSelected(self!.filterButton, selected: false)
+            guard let self else { return }
+            self.viewModel.setCategory(nil)
+            self.setPillSelected(self.filterButton, selected: false)
         })
 
         for category in viewModel.availableCategories() {
@@ -216,8 +218,9 @@ final class ProductListViewController: UIViewController {
             let title = isSelected ? "✓ \(category.capitalized)" : category.capitalized
 
             sheet.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
-                self?.viewModel.setCategory(category)
-                self?.setPillSelected(self!.filterButton, selected: true)
+                guard let self else { return }
+                self.viewModel.setCategory(category)
+                self.setPillSelected(self.filterButton, selected: true)
             })
         }
 
@@ -234,8 +237,9 @@ final class ProductListViewController: UIViewController {
             let title = (option == current) ? "✓ \(option.title)" : option.title
 
             sheet.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
-                self?.viewModel.setSortOption(option)
-                self?.setPillSelected(self!.sortButton, selected: option != .relevance)
+                guard let self else { return }
+                self.viewModel.setSortOption(option)
+                self.setPillSelected(self.sortButton, selected: option != .relevance)
             })
         }
 
@@ -243,7 +247,6 @@ final class ProductListViewController: UIViewController {
         present(sheet, animated: true)
     }
 
-    
     @objc private func dismissKeyboard() {
         view.endEditing(true)
     }
