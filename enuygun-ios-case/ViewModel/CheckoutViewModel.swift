@@ -139,6 +139,6 @@ final class CheckoutViewModel {
     }
 
     private func money(_ value: Double) -> String {
-        String(format: "$%.2f", value)
+        String(format: "$%.2f", Double(value))
     }
 }

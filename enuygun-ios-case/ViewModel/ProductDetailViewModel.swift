@@ -41,7 +41,7 @@ final class ProductDetailViewModel {
     }
 
     var ratingText: String {
-        "★ \(String(format: "%.2f", product.rating))"
+        "★ \(String(format: "%.2f", Double(product.rating)))"
     }
 
     var categoryTag: String { product.category.capitalized }
@@ -55,12 +55,12 @@ final class ProductDetailViewModel {
 
     var displayPriceText: String {
         let price = discountedPrice ?? product.price
-        return String(format: "$%.2f", price)
+        return String(format: "$%.2f", Double(price))
     }
 
     var oldPriceText: NSAttributedString? {
         guard let discount = product.discountPercentage, discount > 0 else { return nil }
-        let text = String(format: "$%.2f", product.price)
+        let text = String(format: "$%.2f", Double(product.price))
         return NSAttributedString(
             string: text,
             attributes: [.strikethroughStyle: NSUnderlineStyle.single.rawValue]

@@ -42,7 +42,7 @@ final class CartViewModel {
             let price = discountedPrice(for: item.product)
             return result + price * Double(item.quantity)
         }
-        return String(format: "$%.2f", subtotal)
+        return String(format: "$%.2f", Double(subtotal))
     }
 
     func increaseQuantity(at index: Int) {
@@ -87,8 +87,8 @@ final class CartViewModel {
         if discount > 0 {
             let discounted = price * (1 - discount / 100)
 
-            let priceText = String(format: "$%.2f", discounted)
-            let old = String(format: "$%.2f", price)
+            let priceText = String(format: "$%.2f", Double(discounted))
+            let old = String(format: "$%.2f", Double(price))
             let oldPrice = NSAttributedString(
                 string: old,
                 attributes: [.strikethroughStyle: NSUnderlineStyle.single.rawValue]
@@ -105,7 +105,7 @@ final class CartViewModel {
                 imageURL: product.thumbnail
             )
         } else {
-            let priceText = String(format: "$%.2f", price)
+            let priceText = String(format: "$%.2f", Double(price))
 
             return CartItemCellViewData(
                 title: product.title,
@@ -125,7 +125,7 @@ final class CartViewModel {
     func displayPrice(for index: Int) -> String {
         let item = items[index]
         let price = discountedPrice(for: item.product)
-        return String(format: "$%.2f", price)
+        return String(format: "$%.2f", Double(price))
     }
 
     func oldPriceText(for index: Int) -> NSAttributedString? {
@@ -134,7 +134,7 @@ final class CartViewModel {
             return nil
         }
 
-        let text = String(format: "$%.2f", product.price)
+        let text = String(format: "$%.2f", Double(product.price))
         return NSAttributedString(
             string: text,
             attributes: [.strikethroughStyle: NSUnderlineStyle.single.rawValue]

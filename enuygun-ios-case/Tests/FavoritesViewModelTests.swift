@@ -9,6 +9,27 @@ import XCTest
 
 final class FavoritesViewModelTests: XCTestCase {
 
+    // MARK: - Properties
+    
+    var sut: FavoritesViewModel!
+    var favoritesStore: MockFavoritesStore!
+    var cartStore: MockCartStore!
+    
+    // MARK: - Lifecycle
+    
+    override func setUp() {
+        super.setUp()
+        favoritesStore = MockFavoritesStore()
+        cartStore = MockCartStore()
+    }
+    
+    override func tearDown() {
+        sut = nil
+        favoritesStore = nil
+        cartStore = nil
+        super.tearDown()
+    }
+
     // MARK: - Mocks
 
     final class MockFavoritesStore: FavoritesStoreProtocol {
@@ -22,7 +43,7 @@ final class FavoritesViewModelTests: XCTestCase {
             if isFavorite(product) {
                 favorites.removeAll { $0.id == product.id }
             } else {
-                favorites.insert(product, at: 0)
+                favorites.append(product)
             }
         }
 
@@ -81,53 +102,128 @@ final class FavoritesViewModelTests: XCTestCase {
     // MARK: - Tests
 
     func test_addToCartFromFavorites() {
-        let favoritesStore = MockFavoritesStore()
-        let cartStore = MockCartStore()
-
-        let product = Product(
-            id: 1,
-            title: "Test",
-            description: "",
-            category: "test",
-            price: 100,
-            discountPercentage: nil,
-            rating: 4,
-            stock: 1,
-            brand: nil,
-            thumbnail: "",
-            images: []
-        )
-
+        // Arrange
+        let product = Product.testProduct(id: 1, title: "Test Product")
         favoritesStore.toggle(product)
-
-        let sut = FavoritesViewModel(
+        
+        sut = FavoritesViewModel(
             favoritesStore: favoritesStore,
             cartStore: cartStore
         )
 
+        // Act
         sut.addToCart(at: 0)
 
-        XCTAssertEqual(cartStore.items.count, 1)
-        XCTAssertEqual(cartStore.items.first?.product.id, product.id)
-        XCTAssertEqual(cartStore.items.first?.quantity, 1)
+        // Assert
+        XCTAssertEqual(cartStore.items.count, 1, "Cart should contain 1 item")
+        XCTAssertEqual(cartStore.items.first?.product.id, product.id, "Product ID should match")
+        XCTAssertEqual(cartStore.items.first?.quantity, 1, "Quantity should be 1")
     }
 
     func test_removeRemovesFromFavorites() {
-        let favoritesStore = MockFavoritesStore()
-        let cartStore = MockCartStore()
-
-        let p1 = Product(id: 1, title: "A", description: "", category: "c", price: 10, discountPercentage: nil, rating: 1, stock: 1, brand: nil, thumbnail: "", images: [])
-        let p2 = Product(id: 2, title: "B", description: "", category: "c", price: 10, discountPercentage: nil, rating: 1, stock: 1, brand: nil, thumbnail: "", images: [])
+        let p1 = Product.testProduct(id: 1, title: "Product A")
+        let p2 = Product.testProduct(id: 2, title: "Product B")
 
         favoritesStore.toggle(p1)
         favoritesStore.toggle(p2)
 
-        let sut = FavoritesViewModel(favoritesStore: favoritesStore, cartStore: cartStore)
+        sut = FavoritesViewModel(favoritesStore: favoritesStore, cartStore: cartStore)
         XCTAssertEqual(sut.items.count, 2)
 
-        sut.remove(at: 0)
+        sut.remove(at: 0) // p1 sil
 
         XCTAssertEqual(sut.items.count, 1)
-        XCTAssertFalse(favoritesStore.isFavorite(p2)) // çünkü toggle insert at 0 yaptığı için p2 baştaydı
+        XCTAssertEqual(sut.items.first?.id, p2.id, "Product B should remain")
+        XCTAssertFalse(favoritesStore.isFavorite(p1), "Product A should be removed from favorites")
+    }
+
+    
+    func test_loadRefreshesItems() {
+        // Arrange
+        let product = Product.testProduct(id: 1)
+        favoritesStore.toggle(product)
+        
+        sut = FavoritesViewModel(
+            favoritesStore: favoritesStore,
+            cartStore: cartStore
+        )
+        
+        XCTAssertEqual(sut.items.count, 1)
+        
+        // Act - Add another product directly to store
+        let product2 = Product.testProduct(id: 2)
+        favoritesStore.toggle(product2)
+        sut.load()
+        
+        // Assert
+        XCTAssertEqual(sut.items.count, 2, "Load should refresh items from store")
+    }
+    
+    func test_isEmptyReturnsTrueWhenNoFavorites() {
+        // Arrange
+        sut = FavoritesViewModel(
+            favoritesStore: favoritesStore,
+            cartStore: cartStore
+        )
+        
+        // Assert
+        XCTAssertTrue(sut.isEmpty, "Should be empty when no favorites")
+    }
+    
+    func test_isEmptyReturnsFalseWhenHasFavorites() {
+        // Arrange
+        let product = Product.testProduct(id: 1)
+        favoritesStore.toggle(product)
+        
+        sut = FavoritesViewModel(
+            favoritesStore: favoritesStore,
+            cartStore: cartStore
+        )
+        
+        // Assert
+        XCTAssertFalse(sut.isEmpty, "Should not be empty when has favorites")
+    }
+    
+    func test_productAtIndexReturnsCorrectProduct() {
+        // Arrange
+        let product1 = Product.testProduct(id: 1, title: "First")
+        let product2 = Product.testProduct(id: 2, title: "Second")
+        
+        favoritesStore.toggle(product1)
+        favoritesStore.toggle(product2)
+        
+        sut = FavoritesViewModel(
+            favoritesStore: favoritesStore,
+            cartStore: cartStore
+        )
+        
+        // Act & Assert
+        XCTAssertEqual(sut.product(at: 0).id, product1.id)
+        XCTAssertEqual(sut.product(at: 1).id, product2.id)
+    }
+}
+
+// MARK: - Test Helpers
+
+extension Product {
+    static func testProduct(
+        id: Int,
+        title: String = "Test Product",
+        price: Double = 100.0,
+        discountPercentage: Double? = nil
+    ) -> Product {
+        Product(
+            id: id,
+            title: title,
+            description: "Test Description",
+            category: "test",
+            price: price,
+            discountPercentage: discountPercentage,
+            rating: 4.5,
+            stock: 10,
+            brand: "Test Brand",
+            thumbnail: "https://example.com/image.jpg",
+            images: []
+        )
     }
 }

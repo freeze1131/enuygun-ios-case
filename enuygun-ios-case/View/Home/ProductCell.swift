@@ -142,9 +142,9 @@ final class ProductCell: UICollectionViewCell {
         let price = product.price
         if let discount = product.discountPercentage {
             let discountedPrice = price * (1 - discount / 100)
-            priceLabel.text = String(format: "$%.2f", discountedPrice)
+            priceLabel.text = String(format: "$%.2f", Double(discountedPrice))
 
-            let old = String(format: "$%.2f", price)
+            let old = String(format: "$%.2f", Double(price))
             oldPriceLabel.attributedText = NSAttributedString(
                 string: old,
                 attributes: [.strikethroughStyle: NSUnderlineStyle.single.rawValue]
@@ -152,7 +152,7 @@ final class ProductCell: UICollectionViewCell {
 
             discountLabel.text = "  %\(Int(discount)) OFF  "
         } else {
-            priceLabel.text = String(format: "$%.2f", price)
+            priceLabel.text = String(format: "$%.2f", Double(price))
             oldPriceLabel.attributedText = nil
             discountLabel.text = nil
         }

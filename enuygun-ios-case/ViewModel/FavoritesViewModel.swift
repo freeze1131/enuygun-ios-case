@@ -67,20 +67,22 @@ final class FavoritesViewModel {
 
     func cellViewData(at index: Int) -> CellViewData {
         let p = items[index]
-        let price = p.price
+
+        let price = Double(p.price)
 
         if let discount = p.discountPercentage, discount > 0 {
-            let discounted = price * (1 - discount / 100)
+            let discountRate = Double(discount) / 100.0
+            let discounted = price * (1.0 - discountRate)
 
-            let priceText = String(format: "$%.2f", discounted)
-            let old = String(format: "$%.2f", price)
+            let priceText = String(format: "$%.2f", Double(discounted))
+            let old = String(format: "$%.2f", Double(price))
 
             let oldAttr = NSAttributedString(
                 string: old,
                 attributes: [.strikethroughStyle: NSUnderlineStyle.single.rawValue]
             )
 
-            let badge = "%\(Int(discount))"
+            let badge = "%\(Int(Double(discount)))"
 
             return CellViewData(
                 title: p.title,
@@ -92,11 +94,12 @@ final class FavoritesViewModel {
         } else {
             return CellViewData(
                 title: p.title,
-                priceText: String(format: "$%.2f", price),
+                priceText: String(format: "$%.2f", Double(price)),
                 oldPriceText: nil,
                 discountBadgeText: nil,
                 imageURL: p.thumbnail
             )
         }
     }
+
 }

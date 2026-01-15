@@ -222,8 +222,8 @@ final class PaymentViewController: UIViewController {
 
     private func updateAmount() {
         amountLabel.text = "Total"
-        amountValueLabel.text = String(format: "$%.2f", totalAmount)
-        payButton.setTitle("Pay $\(String(format: "%.2f", totalAmount))", for: .normal)
+        amountValueLabel.text = String(format: "$%.2f", Double(totalAmount))
+        payButton.setTitle("Pay $\(String(format: "%.2f", Double(totalAmount)))", for: .normal)
     }
 
     // MARK: - Actions
